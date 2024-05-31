@@ -1,0 +1,42 @@
+{
+    "taskGroups": [
+        {
+            "taskSpec": {
+                "runnables": [
+                    {
+                        "container": {
+                            "imageUri": "us-central1-docker.pkg.dev/data-science-417721/kaggle-repository/batch-job-gpu:latest"
+                        }
+                    }
+                ],
+                "computeResource": {
+                    "cpuMilli": "8000",
+                    "memoryMib": "40000"
+                },
+                "maxRunDuration": "36000s"
+            },
+            "taskCount": 1,
+            "parallelism": 1,
+            "taskCountPerNode": 1
+        }
+    ],
+    "allocationPolicy": {
+        "location": {"allowedLocations": ["regions/us-central1"] },
+        "instances": [
+          {
+            "installGpuDrivers": true,
+            "policy": {
+                "accelerators": [
+                    {
+                        "type": "nvidia-l4",
+                        "count": 1
+                      }
+                ]
+            }
+          }
+        ]
+    },
+    "logsPolicy": {
+        "destination": "CLOUD_LOGGING"
+    }
+}
