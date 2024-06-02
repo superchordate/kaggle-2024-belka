@@ -13,20 +13,19 @@ class LeashDataset(Dataset):
     def __len__(self):        
         return self.dt.shape[0]
     def __getitem__(self, idx):
-        # if isinstance(idx, int): idx = [idx]
         idt = self.dt[idx].map_rows(lambda row: (ecfp(row[0]), ))
         iecfp = np.array([x for x in idt['column_0']])
         return torch.from_numpy(iecfp).type(torch.float), self.targets[idx]
 
-# class LeashDataset_Test(Dataset):    
-#     def __init__(self, smiles):         
-#         self.smiles = smiles  
-#     def __len__(self):
-#         return len(self.smiles)    
-#     def __getitem__(self, idx):
-#         if isinstance(idx, int): idx = [idx]
-#         ecfp = np.array([generate_ecfp(x) for x in self.smiles[idx].to_numpy()])
-#         return torch.from_numpy(ecfp).type(torch.float)
+class LeashDataset_Test(Dataset):
+    def __init__(self, dt):
+        self.dt = dt
+    def __len__(self):        
+        return self.dt.shape[0]
+    def __getitem__(self, idx):
+        idt = self.dt[idx].map_rows(lambda row: (ecfp(row[0]), ))
+        iecfp = np.array([x for x in idt['column_0']])
+        return torch.from_numpy(iecfp).type(torch.float)
 
 def get_loader_multi(indir):
     
@@ -65,26 +64,32 @@ def get_loader_multi(indir):
 def get_loader(indir, protein_name, sample = False):
     
     print(f'loading {indir}')
+    istest = 'test' in indir
+    getcols = ['molecule_smiles'] if istest else ['binds', 'molecule_smiles']
     
-    # get base data.
     if sample:
-        dt = pl.read_parquet(f'{indir}/base-sample-{protein_name}.parquet', columns = ['molecule_smiles', 'binds'])
-        dt = dt.with_columns(pl.Series(name="protein_name", values=[protein_name]*dt.shape[0]))
+        file = np.random.choice(listfiles(f'{indir}/base/', protein_name), 1)
+        dt = pl.read_parquet(file, columns = getcols)
+        del file
     else:
         dt = pl.concat([
-            pl.read_parquet(file, columns = ['protein_name', 'molecule_smiles', 'binds']).filter(pl.col('protein_name') == protein_name) \
-            for file in listfiles(f'{indir}/base/', 'base')
+            pl.read_parquet(file, columns = getcols) \
+                for file in listfiles(f'{indir}/base/', protein_name)
         ])
             
-    dt = dt.select(['protein_name', 'binds', 'molecule_smiles'])
+    # dt = dt.with_columns(pl.Series(name="protein_name", values=[protein_name]*dt.shape[0]))
+    dt = dt.select(getcols)
     print(f'read {dt.shape[0]} rows')
-    
-    targets = np.reshape(dt['binds'], (-1, 1))
-    
-    # build loaders.    
-    loader = LeashDataset(dt.select('molecule_smiles'), targets)
-    batch_size = 100
-    shuffle = True
+
+    if istest:
+        loader = LeashDataset_Test(dt)
+        batch_size = 1000
+        shuffle = False
+    else:
+        targets = np.reshape(dt['binds'], (-1, 1))    
+        loader = LeashDataset(dt.select('molecule_smiles'), targets)
+        batch_size = 100
+        shuffle = True
     
     return DataLoader(loader, batch_size=batch_size, shuffle=shuffle, num_workers=0)
 
