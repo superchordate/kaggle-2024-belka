@@ -17,23 +17,7 @@ on_gcp = platform.system() != 'Windows'
 
 data_folder = '' if on_gcp else 'data/'
 sample_size = None if on_gcp else 100000
-
-class LeashDataset(Dataset):    
-    def __init__(self, ecfp, targets):         
-        self.ecfp = torch.from_numpy(ecfp).type(torch.float)
-        self.targets = torch.from_numpy(targets).type(torch.float)        
-    def __len__(self):        
-        return len(self.ecfp)    
-    def __getitem__(self, idx):
-        return self.ecfp[idx], self.targets[idx]
-
-class LeashDataset_Test(Dataset):    
-    def __init__(self, ecfp):         
-        self.ecfp = torch.from_numpy(ecfp).type(torch.float)      
-    def __len__(self):        
-        return len(self.ecfp)    
-    def __getitem__(self, idx):
-        return self.ecfp[idx]
+test_samples = None
 
 def datapipe(data_path, sample_size = None):
     
@@ -42,9 +26,7 @@ def datapipe(data_path, sample_size = None):
     
     print(f'loading {data_path}')
     
-    cols = ['id', 'molecule_smiles', 'protein_name']
-    if not istest:
-        cols.append('binds')
+    cols = ['id', 'molecule_smiles'] + (['binds', 'protein_name'] if not istest else [])
         
     if sample_size:
         print(f'sample to {sample_size}')
@@ -54,7 +36,9 @@ def datapipe(data_path, sample_size = None):
     
     print(f'read {df.shape[0]} rows')
     
-    if not istest:
+    if not istest:   
+    
+        df = df.filter(~pl.col('molecule_smiles').is_null())
         
         binds = df['binds'].to_numpy() == 1
         BRD4 = (df['protein_name'] == 'BRD4').to_numpy()
@@ -64,10 +48,10 @@ def datapipe(data_path, sample_size = None):
         BRD4 = np.reshape(BRD4, (-1, 1))
         sEH = np.reshape(sEH, (-1, 1))
         
-        target = np.concatenate((binds, BRD4, sEH), axis = 1)
+        targets = np.concatenate((binds, BRD4, sEH), axis = 1)
         
         # target = np.full(len(binds), -1, dtype=np.int8)
-        # target[binds & BRD4] = 0
+        # target[binds & BRD4] = 0 
         # target[binds & sEH] = 1
         # target[binds & ~BRD4 & ~sEH] = 2
         # target[~binds & sEH] = 3
@@ -75,17 +59,43 @@ def datapipe(data_path, sample_size = None):
         # target[~binds & ~BRD4 & ~sEH] = 5
         # target = np.reshape(target, (-1, 1))
     
-    molecule = np.vectorize(Chem.MolFromSmiles)(df['molecule_smiles'].to_numpy())
-    ecfp =  np.array([
-        list(AllChem.GetMorganFingerprintAsBitVect(x, radius=2, nBits=1024)) for x in molecule
-    ])
-    
     if not istest:
-        loader = LeashDataset(ecfp, target)
+        loader = LeashDataset(df['molecule_smiles'], targets)
+        batch_size = 100
+        shuffle = True
     else:
-        loader = LeashDataset_Test(ecfp)
+        loader = LeashDataset_Test(df['molecule_smiles'])
+        batch_size = 100
+        shuffle = False
     
-    return DataLoader(loader, batch_size=100, shuffle=False, num_workers=0), df['id']
+    return DataLoader(loader, batch_size=batch_size, shuffle=shuffle, num_workers=0), df['id']
+
+class LeashDataset(Dataset):    
+    def __init__(self, smiles, targets):
+        self.smiles = smiles
+        self.targets = torch.from_numpy(targets).type(torch.float)
+    def __len__(self):        
+        return len(self.smiles)
+    def __getitem__(self, idx):
+        if isinstance(idx, int): idx = [idx]
+        ecfp = np.array([generate_ecfp(x) for x in self.smiles[idx].to_numpy()])
+        return torch.from_numpy(ecfp).type(torch.float), self.targets[idx]
+
+class LeashDataset_Test(Dataset):    
+    def __init__(self, smiles):         
+        self.smiles = smiles  
+    def __len__(self):
+        return len(self.smiles)    
+    def __getitem__(self, idx):
+        if isinstance(idx, int): idx = [idx]
+        ecfp = np.array([generate_ecfp(x) for x in self.smiles[idx].to_numpy()])
+        return torch.from_numpy(ecfp).type(torch.float)
+
+def generate_ecfp(smile, radius=2, bits=1024):
+    molecule = Chem.MolFromSmiles(smile)
+    if molecule is None:
+        return np.full(bits, -1)
+    return list(AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=bits))
 
 class MLP(nn.Module):
     def __init__(self, input_len = 1024):
@@ -206,13 +216,16 @@ for epoch in range(num_epochs):  # loop over the dataset multiple times
             
         del data, inputs, labels, outputs
 
-loader, ids = datapipe('test.parquet')
+loader, ids = datapipe('test.parquet', sample_size = test_samples)
 
 print('running test predictions')
+print(f'{len(loader)} batches')
 net.eval()
 scores = []
 with torch.no_grad():
     for i, data in enumerate(loader, 0):
+        if (i % 1000 == 0) and (i != 0):
+            print(f'batch {i}')
         outputs = net(data)
         scores+= [x[0] for x in outputs.numpy()]
 

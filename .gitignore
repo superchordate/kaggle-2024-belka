@@ -2,3 +2,4 @@ data/
 .venv/
 out/
 not-tracked/
+__pycache__/
