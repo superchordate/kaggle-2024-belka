@@ -6,8 +6,9 @@ from modules.score import kaggle_score
 
 # run model training on the train/train samples.
 for protein_name in ['sEH', 'BRD4', 'HSA']:
+    
     net, labels, scores = train(
-        get_loader('out/train/train/', protein_name, sample = False),
+        get_loader('out/train/train/', protein_name),
         save_folder = 'out/train/tran/',
         save_name = f'net-{protein_name}'
     )

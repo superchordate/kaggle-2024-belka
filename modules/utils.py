@@ -1,4 +1,6 @@
 import os, pickle, shutil
+import pyarrow.parquet as pq
+import numpy as np
 
 def dircreate(x, fromscratch = False): 
     if os.path.exists(x) and fromscratch: shutil.rmtree(x)
@@ -25,3 +27,11 @@ def pad0(x):
 
 def listfiles(dir, pattern):
     return [dir + '/' + f for f in os.listdir(dir) if pattern in f]
+
+def write_parquet_from_pyarrow(x, path):
+    writer = pq.ParquetWriter(path, x.schema)
+    writer.write_table(x)
+    writer.close()
+
+def unlist_numpy(x):
+    return np.reshape(x, (1,-1))[0]

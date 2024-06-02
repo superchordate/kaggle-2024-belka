@@ -54,7 +54,7 @@ class MLP_multi(nn.Module):
         self.batchnorm4 = nn.BatchNorm1d(100)
         self.dropout4 = nn.Dropout(0.3)
         self.fc5 = nn.Linear(100, 10)
-        self.fc_fin = nn.Linear(10, 3)
+        self.fc_fin = nn.Linear(10, 1)
         self.sigmoid = nn.Sigmoid()
     def forward(self, x):
         x = torch.flatten(x, 1) # flatten all dimensions except batch        
@@ -77,11 +77,19 @@ def train(
         save_folder,
         save_name,
         epochs = 5, print_batches = 500,        
-        net = MLP(), 
+        net = None, 
         optimizer = None,
         # criterion = nn.MSELoss()
         criterion = nn.BCELoss()
-):    
+):  
+    if not net:
+        # run one loader loop to get the input size.
+        for i, data in enumerate(loader, 0):
+            inputs, labels = data
+            net = MLP(input_len = len(inputs[0]))
+            del i, data, inputs, labels
+            break
+    
     if not optimizer: optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
     print(f'training {save_name}')
     print(f'{len(loader)} batches')
