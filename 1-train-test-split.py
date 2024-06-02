@@ -18,7 +18,6 @@ for train_test in ['train', 'val']:
     del train_test
 dircreate('out/test/test', fromscratch = fromscratch)
 dircreate('out/test/test/base', fromscratch = fromscratch)
-    
 
 def get_block_indexes(x, blocks, anti_blocks = None):
     
@@ -46,7 +45,7 @@ def get_block_indexes(x, blocks, anti_blocks = None):
         x = x.join(anti_blocks, keys = ['buildingblock2_index'], right_keys = ['index'], join_type = 'left anti')
         x = x.join(anti_blocks, keys = ['buildingblock3_index'], right_keys = ['index'], join_type = 'left anti')
         
-    x = x.sort_by('id')
+    x = x.sort_by('id')    
     
     if (len(x['id']) != len(np.unique(x['id']))) or (len(x['id']) != len(np.unique(x['id']))):
         raise Exception('rows duplicated')

@@ -85,9 +85,9 @@ def train(
     if not net:
         # run one loader loop to get the input size.
         for i, data in enumerate(loader, 0):
-            inputs, labels = data
+            iids, inputs, ilabels = data
             net = MLP(input_len = len(inputs[0]))
-            del i, data, inputs, labels
+            del i, data, iids, inputs, ilabels
             break
     
     if not optimizer: optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
@@ -95,44 +95,45 @@ def train(
     print(f'{len(loader)} batches')
     for epoch in range(epochs):
         print(f'epoch {epoch}')
-        running_loss = 0.0
+        loss = 0.0
         epoch_loss = 0
-        running_scores = []
-        running_labels = []
+        scores = []
+        labels = []
+        ids = []
         for i, data in enumerate(loader, 0):
-            inputs, labels = data
+            iids, inputs, ilabels = data
             optimizer.zero_grad()
             outputs = net(inputs)        
-            loss = criterion(outputs, labels)
-            loss.backward()    
+            iloss = criterion(outputs, ilabels)
+            iloss.backward()    
             optimizer.step()
-            running_loss += loss.item()
-            epoch_loss += loss.item()
-            running_labels += labels.tolist()
-            running_scores += outputs.tolist()
+            loss += iloss.item()
+            epoch_loss += iloss.item()
+            labels = np.append(labels, ilabels.tolist())
+            scores = np.append(scores, outputs.tolist())
+            ids = np.append(ids, iids)
             if (i % print_batches == 0) and (i != 0):
-                print(f'batch {i}, loss: {running_loss:.4f}')
-                running_loss = 0.0
+                print(f'batch {i}, loss: {loss:.4f}')
+                loss = 0.0
                 save_model(net, save_folder, save_name, verbose = False)
-            del i, data, inputs, labels, outputs, loss            
-    return net, np.array(unlist(running_labels)), np.array(unlist(running_scores))
-
-
+            del i, data, iids, inputs, ilabels, outputs, iloss
+    return ids, net, np.array(unlist(running_labels)), np.array(unlist(running_scores))
     
 def run_val(loader, net):    
     print(f'{len(loader)} batches')
     with torch.no_grad():
         for epoch in range(5):
-            # print(f'epoch {epoch}')
-            running_scores = []
-            running_labels = []
+            scores = []
+            labels = []
+            ids = []
             for i, data in enumerate(loader, 0):
-                inputs, labels = data
+                iids, inputs, ilabels = data
                 outputs = net(inputs)
-                running_labels += labels.tolist()
-                running_scores += outputs.tolist()
-                del i, data, inputs, labels, outputs
-    return np.array(unlist(running_labels)), np.array(unlist(running_scores))
+                labels = np.append(labels, ilabels.tolist())
+                scores = np.append(scores, outputs.tolist())
+                ids = np.append(ids, iids)
+                del i, data, iids, inputs, ilabels, outputs
+    return np.array(unlist(ids)), np.array(unlist(labels)), np.array(unlist(scores))
 
 def save_model(model, folder, name, on_gcp = False, verbose = True, device = 'cpu'):
     model_scripted = torch.jit.script(model.cpu())

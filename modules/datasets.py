@@ -8,6 +8,7 @@ import polars as pl
     
 class Dataset_Blocks(Dataset):
     def __init__(self, dt, blocks, targets = None):
+        self.ids = dt['id'].to_numpy()
         self.dt = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
         self.blocks = blocks.select(['index', 'ecfp'])
         if isinstance(targets, pl.Series):
@@ -23,23 +24,22 @@ class Dataset_Blocks(Dataset):
         idt = idt.join(self.blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner').drop('buildingblock2_index').rename({'ecfp': 'ecfp2'})
         idt = idt.join(self.blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner').drop('buildingblock3_index').rename({'ecfp': 'ecfp3'})
         idt = idt.map_rows(lambda row: (row[0] + row[1] + row[2]))
-        return torch.from_numpy(idt['column_0'].to_numpy()).type(torch.float), self.targets[idx]
+        return self.ids[idx], torch.from_numpy(idt['column_0'].to_numpy()).type(torch.float), self.targets[idx]
 
-def get_loader(indir, protein_name, sample = False):
+def get_loader(indir, protein_name, n_files = False):
     
     print(f'loading {indir} {protein_name}')
     istest = 'test' in indir
-    getcols = ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'] + ([] if istest else ['binds'])
+    getcols = ['id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'] + ([] if istest else ['binds'])
     
-    if sample:
-        file = np.random.choice(listfiles(f'{indir}/base/', protein_name), 1)
-        dt = pl.read_parquet(file, columns = getcols)
-        del file
+    if n_files:
+        dt = []
+        for file in np.random.choice(listfiles(f'{indir}/base/', protein_name), n_files):
+            dt.append(pl.read_parquet(file, columns = getcols))
+            del file
+        dt = pl.concat(dt)
     else:
-        dt = pl.read_parquet(
-            f'{indir}/base/base-{protein_name}-*.parquet', 
-            columns = getcols
-        )
+        dt = pl.read_parquet(f'{indir}/base/base-{protein_name}-*.parquet', columns = getcols)
 
     print(f'read {dt.shape[0]/1000/1000:,.2f} M rows')
 
