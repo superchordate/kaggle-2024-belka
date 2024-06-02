@@ -6,7 +6,6 @@ import pyarrow.parquet as pq
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import numpy as np
-from sklearn.decomposition import PCA
 
 def dircreate(x): 
     if not os.path.exists(x):
@@ -24,33 +23,6 @@ for train_test in ['train', 'test']:
     dircreate(f'out/{train_test}/base')
     del train_test
 
-def get_pca(X, info_cutoff = 0.95):
-    
-    print(f'running PCA on {len(X[0])} columns {len(X)} rows')
-
-    # start at number cols minus one and drop columns until you get to 95% of the information.
-    n_components = len(X[0])
-    if n_components > 1 and n_components < len(X):
-
-        while True:
-            pca = PCA(n_components = n_components)
-            pca = pca.fit(X)
-            if np.sum(pca.explained_variance_ratio_) < (1 - info_cutoff):
-                break
-            else:
-                n_components = n_components - 1
-                
-        # fit the final pca.
-        n_components += 1        
-        pca = PCA(n_components = n_components).fit(X)
-        
-        print({
-            'starting cols': len(X[0]), 
-            'ending cols': n_components, 
-            'explained': round(np.sum(pca.explained_variance_ratio_), 2)
-        })
-        
-        return pca
 
 # process a parquet file by row splits. 
 

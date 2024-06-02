@@ -76,7 +76,7 @@ def train(
         loader, 
         save_folder,
         save_name,
-        epochs = 5, print_batches = 500,        
+        epochs = 5, print_batches = 500,
         net = None, 
         optimizer = None,
         # criterion = nn.MSELoss()
@@ -86,7 +86,7 @@ def train(
         # run one loader loop to get the input size.
         for i, data in enumerate(loader, 0):
             iids, inputs, ilabels = data
-            net = MLP(input_len = len(inputs[0]))
+            net = MLP(input_len = len(inputs[0][0]))
             del i, data, iids, inputs, ilabels
             break
     
@@ -117,7 +117,7 @@ def train(
                 loss = 0.0
                 save_model(net, save_folder, save_name, verbose = False)
             del i, data, iids, inputs, ilabels, outputs, iloss
-    return ids, net, np.array(unlist(running_labels)), np.array(unlist(running_scores))
+    return ids, net, np.array(unlist(labels)), np.array(unlist(scores))
     
 def run_val(loader, net):    
     print(f'{len(loader)} batches')

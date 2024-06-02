@@ -7,24 +7,25 @@ import numpy as np
 import polars as pl
     
 class Dataset_Blocks(Dataset):
+
     def __init__(self, dt, blocks, targets = None):
         self.ids = dt['id'].to_numpy()
-        self.dt = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
-        self.blocks = blocks.select(['index', 'ecfp'])
+        self.blocks = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
+        self.blocks_ecfp_pca = np.array([list(x) for x in blocks['ecfp_pca']])
         if isinstance(targets, pl.Series):
             self.targets = torch.reshape(torch.from_numpy(dt['binds'].to_numpy()).type(torch.float), (-1, 1))
         else:
             # add dummy targets if this is test. 
             self.targets = torch.from_numpy(np.array([-1]*dt.shape[0])).type(torch.float) 
+
     def __len__(self):
-        return self.dt.shape[0]
+        return self.blocks.shape[0]
+    
     def __getitem__(self, idx):
-        idt = self.dt[idx]
-        idt = idt.join(self.blocks, left_on = 'buildingblock1_index', right_on = 'index', how = 'inner').drop('buildingblock1_index').rename({'ecfp': 'ecfp1'})
-        idt = idt.join(self.blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner').drop('buildingblock2_index').rename({'ecfp': 'ecfp2'})
-        idt = idt.join(self.blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner').drop('buildingblock3_index').rename({'ecfp': 'ecfp3'})
-        idt = idt.map_rows(lambda row: (row[0] + row[1] + row[2]))
-        return self.ids[idx], torch.from_numpy(idt['column_0'].to_numpy()).type(torch.float), self.targets[idx]
+        idt = self.blocks[idx]
+        iblocks_ecfp_pca = [self.blocks_ecfp_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+        iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
+        return self.ids[idx], torch.from_numpy(iblocks_ecfp_pca).type(torch.float), self.targets[idx]
 
 def get_loader(indir, protein_name, n_files = False):
     
@@ -44,7 +45,7 @@ def get_loader(indir, protein_name, n_files = False):
     print(f'read {dt.shape[0]/1000/1000:,.2f} M rows')
 
     blocks_file = 'out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet'
-    blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp'])
+    blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp_pca'])
 
     if istest:
         targets = None

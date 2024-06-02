@@ -8,7 +8,8 @@ from modules.score import kaggle_score
 for protein_name in ['sEH', 'BRD4', 'HSA']:
     
     ids, net, labels, scores = train(
-        get_loader('out/train/train/', protein_name, n_files = 1),
+        get_loader('out/train/train/', protein_name, n_files = 10),
+        epochs = 1,
         save_folder = 'out/train/train/',
         save_name = f'net-{protein_name}'
     )

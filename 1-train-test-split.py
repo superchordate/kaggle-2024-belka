@@ -7,7 +7,8 @@ import pyarrow.compute as pc
 import numpy as np
 from sklearn.model_selection import train_test_split
 from modules.utils import dircreate, save1, pad0, write_parquet_from_pyarrow
-from modules.mols import get_blocks
+from modules.mols import get_blocks, add_block_efcps
+import polars as pl
 
 fromscratch = False # to reset files in folders.
  
@@ -25,6 +26,7 @@ def get_block_indexes(x, blocks, anti_blocks = None):
     
     # add binds dummy col if it is missing.
     if 'binds' not in x.schema.names: x = x.add_column(5, 'binds', [np.array([0]*x.num_rows)])
+    blocks = blocks.select(['index', 'smile'])
     
     # joins in pyarrow will be faster, start there.
     x = x.join(blocks, keys = ['buildingblock1_smiles'], right_keys = ['smile'], join_type = 'inner')
@@ -78,8 +80,21 @@ if not os.path.exists('out/train/train/base/base-BRD4-01.parquet'):
         i_test = get_block_indexes(i, test_blocks, train_blocks)
         
         for protein_name in ['sEH', 'BRD4', 'HSA']:
+
             write_parquet_from_pyarrow(i_train.filter(pc.field('protein_name') == protein_name), f'out/train/train/base/base-{protein_name}-{pad0(ct)}.parquet')
             write_parquet_from_pyarrow(i_test.filter(pc.field('protein_name') == protein_name), f'out/train/val/base/base-{protein_name}-{pad0(ct)}.parquet')
+
+            # now read to polars and add ecfps.
+            # print(f'adding ecfp for {protein_name}')
+            # add_block_efcps(
+            #     pl.read_parquet(f'out/train/train/base/base-{protein_name}-{pad0(ct)}.parquet'), 
+            #     train_blocks
+            # ).write_parquet(f'out/train/train/base/base-{protein_name}-{pad0(ct)}.parquet')
+
+            # add_block_efcps(
+            #     pl.read_parquet(f'out/train/val/base/base-{protein_name}-{pad0(ct)}.parquet'), 
+            #     test_blocks
+            # ).write_parquet(f'out/train/val/base/base-{protein_name}-{pad0(ct)}.parquet')
         
         print(f'batch {ct}: {i_train.shape[0]/1000/1000:,.2f} M train rows {i_test.shape[0]:,.0f} val rows')
             
@@ -101,9 +116,14 @@ for i in f.iter_batches(batch_size = batch_size):
     
     # if any(init_ids != i.select(['id']).to_pandas().id.values):
     if np.any(init_ids != np.array(i['id'])):
-        raise Exception('Lost rows.')    
+        raise Exception('Lost rows.')
     
     for protein_name in ['sEH', 'BRD4', 'HSA']:
         write_parquet_from_pyarrow(i.filter(pc.field('protein_name') == protein_name), f'out/test/test/base/base-{protein_name}-{pad0(ct)}.parquet')
+        # print('adding ecfp')
+        # add_block_efcps(
+        #     pl.read_parquet(f'out/test/test/base/base-{protein_name}-{pad0(ct)}.parquet'), 
+        #     building_blocks
+        # ).write_parquet(f'out/test/test/base/base-{protein_name}-{pad0(ct)}.parquet')
     
     print(f'batch {ct}')
