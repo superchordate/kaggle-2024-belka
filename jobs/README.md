@@ -14,20 +14,8 @@ Use these scripts to delete/deploy jobs:
 ```
 gcloud config set project data-science-417721
 
-gcloud batch jobs delete sample --location us-central1
-gcloud batch jobs submit sample --location us-central1 --config jobs/1-sample-data/instance-template.json
-
-gcloud batch jobs delete preprocess --location us-central1
-gcloud batch jobs submit preprocess --location us-central1 --config jobs/2-preprocess-data/instance-template.json
-
-gcloud batch jobs delete fix-sample --location us-central1
-gcloud batch jobs submit fix-sample --location us-central1 --config jobs/2b-fix-sample/instance-template.json
-
 gcloud batch jobs delete fit --location us-central1
-gcloud batch jobs submit fit --location us-central1 --config jobs/3-train-model/instance-template.json
-
-gcloud batch jobs delete fit-voting --location us-central1
-gcloud batch jobs submit fit-voting --location us-central1 --config jobs/3-train-voting/instance-template.json
+gcloud batch jobs submit fit --location us-central1 --config jobs/train-model/instance-template.json
 ```
 
 Helpful links and commands:

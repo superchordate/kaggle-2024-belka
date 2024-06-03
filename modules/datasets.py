@@ -1,22 +1,23 @@
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch
-from modules.mols import ecfp
 from modules.utils import listfiles
 import numpy as np
 import polars as pl
     
 class Dataset_Blocks(Dataset):
 
-    def __init__(self, dt, blocks, targets = None):
+    def __init__(self, dt, blocks, targets = None, device = 'cpu'):
+        
+        self.device = device
         self.ids = dt['id'].to_numpy()
         self.blocks = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
         self.blocks_ecfp_pca = np.array([list(x) for x in blocks['ecfp_pca']])
         if isinstance(targets, pl.Series):
-            self.targets = torch.reshape(torch.from_numpy(dt['binds'].to_numpy()).type(torch.float), (-1, 1))
+            self.targets = torch.reshape(torch.from_numpy(dt['binds'].to_numpy()).type(torch.float), (-1, 1)).to(device)
         else:
             # add dummy targets if this is test. 
-            self.targets = torch.from_numpy(np.array([-1]*dt.shape[0])).type(torch.float) 
+            self.targets = torch.from_numpy(np.array([-1]*dt.shape[0])).type(torch.float).to(device)
 
     def __len__(self):
         return self.blocks.shape[0]
@@ -25,30 +26,37 @@ class Dataset_Blocks(Dataset):
         idt = self.blocks[idx]
         iblocks_ecfp_pca = [self.blocks_ecfp_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
         iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
-        return self.ids[idx], torch.from_numpy(iblocks_ecfp_pca).type(torch.float), self.targets[idx]
+        return self.ids[idx], torch.from_numpy(iblocks_ecfp_pca).type(torch.float).to(self.device), self.targets[idx]
 
-def get_loader(indir, protein_name, n_files = False):
+def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'cpu'):
     
     print(f'loading {indir} {protein_name}')
     istest = 'test' in indir
+    isval = 'val' in indir
     getcols = ['id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'] + ([] if istest else ['binds'])
     
+    dt = []
     if n_files:
-        dt = []
         for file in np.random.choice(listfiles(f'{indir}/base/', protein_name), n_files):
             dt.append(pl.read_parquet(file, columns = getcols))
             del file
-        dt = pl.concat(dt)
     else:
-        dt = pl.read_parquet(f'{indir}/base/base-{protein_name}-*.parquet', columns = getcols)
+        for file in listfiles(f'{indir}/base/', protein_name):
+            dt.append(pl.read_parquet(file, columns = getcols))
+            del file
+    dt = pl.concat(dt)
 
     print(f'read {dt.shape[0]/1000/1000:,.2f} M rows')
 
-    blocks_file = 'out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet'
+    blocks_file = 'building_blocks.parquet' if on_gcp else ('out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet')
     blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp_pca'])
 
     if istest:
         targets = None
+        batch_size = 1000
+        shuffle = False
+    elif isval:
+        targets = dt['binds']
         batch_size = 1000
         shuffle = False
     else:
@@ -56,7 +64,7 @@ def get_loader(indir, protein_name, n_files = False):
         batch_size = 100
         shuffle = True
     
-    return DataLoader(Dataset_Blocks(dt, blocks, targets), batch_size=batch_size, shuffle=shuffle, num_workers=0)
+    return DataLoader(Dataset_Blocks(dt, blocks, targets, device), batch_size=batch_size, shuffle=shuffle, num_workers=0)
 
 
 # def get_loader_multi(indir):

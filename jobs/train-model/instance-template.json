@@ -5,24 +5,23 @@
                 "runnables": [
                     {
                         "container": {
-                            "imageUri": "us-central1-docker.pkg.dev/data-science-417721/kaggle-repository/batch-job-highmem:latest"
+                            "imageUri": "us-central1-docker.pkg.dev/data-science-417721/kaggle-repository/batch-job-gpu:latest"
                         }
                     }
                 ],
                 "computeResource": {
-                    "cpuMilli": "8000",
-                    "memoryMib": "100000",
-                    "bootDiskMib": "0"
+                    "cpuMilli": "16000",
+                    "memoryMib": "12000"
                 },
                 "maxRunDuration": "28800s"
             },
-            "taskCount": 1,
-            "parallelism": 1,
+            "taskCount": 3,
+            "parallelism": 3,
             "taskCountPerNode": 1
         }
     ],
     "allocationPolicy": {
-        "location": {"allowedLocations": ["regions/us-central1"]}
+        "location": {"allowedLocations": ["regions/us-central1"] }
     },
     "logsPolicy": {
         "destination": "CLOUD_LOGGING"

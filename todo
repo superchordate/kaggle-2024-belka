@@ -1,0 +1,1 @@
+get ecpu on tensor.to(device) instead of numpy

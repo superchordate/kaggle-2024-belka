@@ -1,4 +1,4 @@
-import os, pickle, shutil
+import os, pickle, shutil, torch, platform
 import pyarrow.parquet as pq
 import numpy as np
 
@@ -35,3 +35,9 @@ def write_parquet_from_pyarrow(x, path):
 
 def unlist_numpy(x):
     return np.reshape(x, (1,-1))[0]
+
+def device():
+    return 'cuda' if torch.cuda.is_available() else 'cpu'
+
+def gcp():    
+    return platform.system() != 'Windows'
