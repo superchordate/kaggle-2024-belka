@@ -13,6 +13,7 @@ class Dataset_Blocks(Dataset):
         self.ids = dt['id'].to_numpy()
         self.blocks = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
         self.blocks_ecfp_pca = np.array([list(x) for x in blocks['ecfp_pca']])
+        self.blocks_onehot_pca = np.array([list(x) for x in blocks['onehot_pca']])
         if isinstance(targets, pl.Series):
             self.targets = torch.reshape(torch.from_numpy(dt['binds'].to_numpy()).type(torch.float), (-1, 1)).to(device)
         else:
@@ -23,10 +24,18 @@ class Dataset_Blocks(Dataset):
         return self.blocks.shape[0]
     
     def __getitem__(self, idx):
+
         idt = self.blocks[idx]
+
         iblocks_ecfp_pca = [self.blocks_ecfp_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
         iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
-        return self.ids[idx], torch.from_numpy(iblocks_ecfp_pca).type(torch.float).to(self.device), self.targets[idx]
+
+        iblocks_onehot_pca = [self.blocks_onehot_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+        iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
+
+        ix = np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1)
+
+        return self.ids[idx], torch.from_numpy(ix).type(torch.float).to(self.device), self.targets[idx]
 
 def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'cpu'):
     
@@ -49,7 +58,7 @@ def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'c
     print(f'read {dt.shape[0]/1000/1000:,.2f} M rows')
 
     blocks_file = 'building_blocks.parquet' if on_gcp else ('out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet')
-    blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp_pca'])
+    blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp_pca', 'onehot_pca'])
 
     if istest:
         targets = None
