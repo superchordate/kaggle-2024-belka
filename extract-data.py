@@ -6,15 +6,8 @@ import pyarrow.parquet as pq
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import numpy as np
-
-def dircreate(x): 
-    if not os.path.exists(x):
-        os.makedirs(x)
-        
-def save1(obj, path):
-    output = open(path, 'wb')
-    pickle.dump(obj, output)
-    output.close()
+from modules.utils import save1, dircreate
+from modules.mols import ecfp
     
 dircreate('out')
 for train_test in ['train', 'test']:
@@ -22,15 +15,6 @@ for train_test in ['train', 'test']:
     dircreate(f'out/{train_test}/ecfp')
     dircreate(f'out/{train_test}/base')
     del train_test
-
-
-# process a parquet file by row splits. 
-
-def generate_ecfp(smile, radius=2, bits=1024):
-    molecule = Chem.MolFromSmiles(smile)
-    if molecule is None:
-        return np.full(bits, -1)
-    return list(AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=bits))
 
 # run some training data to fit a pca.
 ct = 0

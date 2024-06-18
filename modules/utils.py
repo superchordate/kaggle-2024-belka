@@ -41,3 +41,10 @@ def device():
 
 def gcp():    
     return platform.system() != 'Windows'
+
+def fileexists(x): 
+    return os.path.exists(x)
+
+def fileremove(x):
+    if fileexists(x): os.remove(x)
+

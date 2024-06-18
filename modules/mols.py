@@ -13,10 +13,17 @@ def ecfp(smile, radius=2, bits=1024):
         return np.full(bits, -1)
     return list(AllChem.GetMorganFingerprintAsBitVect(molecule, radius, nBits=bits))
 
-def get_blocks(train_test):
+def get_blocks(train_test, return_pyarrow = True):
     
     print('get_blocks')
-    pca = load1('out/train/building_blocks-ecfp-pca.pkl')
+
+    # pca may not be available. 
+    try:
+        pca = load1('out/train/building_blocks-ecfp-pca.pkl')
+        foundpca = True
+    except:
+        foundpca = False
+
     filepath = f'out/{train_test}/building_blocks.parquet'
     if not os.path.exists(filepath):
         print(f'did not find {filepath}')
@@ -37,25 +44,27 @@ def get_blocks(train_test):
             # molecules = np.unique(np.concatenate([molecules, i['molecule_smiles']]))
             # print(f'molecules {len(molecules):,.0f}')
 
-            # if ct == 1: break
+            #if ct == 1: break
         
         print('adding ecfp')
         building_blocks = pl.DataFrame({'smile': np.unique(np.concatenate(building_blocks))}).with_row_index()
         building_blocks = building_blocks.map_rows(lambda row: (row[0], row[1], ecfp(row[1])))
         building_blocks.columns = ['index', 'smile', 'ecfp']
 
-        print('running PCA')
-        ecfps = np.array([x for x in building_blocks['ecfp']])
-        building_blocks = building_blocks.with_columns(pl.Series('ecfp_pca', pca.transform(ecfps)))
-            
+        if foundpca: 
+            print('running PCA')
+            ecfps = np.array([x for x in building_blocks['ecfp']])
+            building_blocks = building_blocks.with_columns(pl.Series('ecfp_pca', pca.transform(ecfps)))
+
         print(f'writing {filepath}')
         building_blocks.write_parquet(filepath)
     
     # re-read to get a Pyarrow Table.
-    blocks = pq.ParquetFile(filepath).read(columns = ['index', 'smile', 'ecfp_pca'])
-    # smile comes in as a long string for some reason. fix it to regular string.
-    blocks.add_column(1, 'smile', blocks['smile'].cast(pa.string())).remove_column(2)
-    return blocks
+    if return_pyarrow:
+        blocks = pq.ParquetFile(filepath).read(columns = ['index', 'smile', 'ecfp_pca'])
+        # smile comes in as a long string for some reason. fix it to regular string.
+        blocks.add_column(1, 'smile', blocks['smile'].cast(pa.string())).remove_column(2)
+        return blocks
 
 def add_block_efcps(dt, blocks):
 

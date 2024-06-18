@@ -7,7 +7,7 @@
 * Install [virtualenv via pip](https://virtualenv.pypa.io/en/latest/installation.html) with command `python -m pip install --user virtualenv`.
   - The script will suggest adding virtualenv.exe to PATH, do so now. For me it is: `C:\Users\Bryce\AppData\Roaming\Python\Python311\Scripts`
 * Set up your local project virtual environment by running:
-    - `virtualenv .venv -p "C:\Users\Bryce\AppData\Local\Programs\Python\Python311\python.exe"`.
+    - `virtualenv .venv -p "C:\Users\super\AppData\Local\Programs\Python\Python311\python.exe"`.
     - `".venv/Scripts/activate.bat"`
     - `pip install -r requirements.txt`
 
@@ -28,16 +28,13 @@ python -m venv .venv  -p "C:\Users\Bryce\AppData\Local\Programs\Python\Python311
 | jobs | Code for running jobs on Google Cloud Platform. I (Bryce) have been using these to run operations too big for my laptop. See jobs/README.md for more information. |
 | out | Data created as output from the code in this repo. |
 | scratch | Temporary place for files that are unfinished or temporary. |
-| scripts | Python scripts that form the main project (right now just data prep/explore). |
+| scripts | Python scripts that form the main project. |
 
 ## Links
 
 * [Kaggle Submission Notebook](https://www.kaggle.com/code/brycechamberlain/bryce-chamberlain-home-credit-submission)
-* [GitHub](https://github.com/superchordate/kaggle-2024-credit)
-* [Data folder on Drive](https://drive.google.com/drive/folders/1aYeJOcdap4l3VKbYSHgFpxzfA3AoDRO3?usp=drive_link)
+* [GitHub](https://github.com/superchordate/kaggle-2024-belka)
 
-### Instructions for Sarah:
+### Instructions
 
-* Start with scripts\feature-engineering.py. 
-* I've sampled the data down so it is easier to work with. Feel free to sample it down even more with the code at jobs\1-sample-data\batch-job.py
-* See the comment at the top of scripts\feature-engineering.py for where to get the data you'll need. 
+* Run 1-train-test-split.py to create the initial train/test splits
