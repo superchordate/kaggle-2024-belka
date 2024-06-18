@@ -3,12 +3,12 @@
 from modules.datasets import get_loader
 from modules.net import train
 
-run_name = 'files5-dropout50-epochs1-onehot'
+run_name = 'files5-dropout50-epochs1'
 
 for protein_name in ['sEH', 'BRD4', 'HSA']:
     
     ids, net, labels, scores = train(
-        get_loader('out/train/train', protein_name, n_files = 5),
+        get_loader('out/train/train', protein_name, n_files = 5, options = {'onehot': False}),
         epochs = 1,
         save_folder = 'out/net/',
         save_name = f'net-{run_name}-{protein_name}',

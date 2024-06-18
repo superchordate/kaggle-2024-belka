@@ -7,9 +7,10 @@ import polars as pl
     
 class Dataset_Blocks(Dataset):
 
-    def __init__(self, dt, blocks, targets = None, device = 'cpu'):
+    def __init__(self, dt, blocks, targets = None, device = 'cpu', options = {}):
         
         self.device = device
+        self.options = options
         self.ids = dt['id'].to_numpy()
         self.blocks = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
         self.blocks_ecfp_pca = np.array([list(x) for x in blocks['ecfp_pca']])
@@ -30,14 +31,16 @@ class Dataset_Blocks(Dataset):
         iblocks_ecfp_pca = [self.blocks_ecfp_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
         iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
 
-        iblocks_onehot_pca = [self.blocks_onehot_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
-        iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
-
-        ix = np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1)
+        if self.options['onehot']:
+            iblocks_onehot_pca = [self.blocks_onehot_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+            iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
+            ix = np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1)
+        else:
+            ix = iblocks_ecfp_pca
 
         return self.ids[idx], torch.from_numpy(ix).type(torch.float).to(self.device), self.targets[idx]
 
-def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'cpu'):
+def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'cpu', options = {}):
     
     print(f'loading {indir} {protein_name}')
     istest = 'test' in indir
@@ -73,7 +76,7 @@ def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'c
         batch_size = 100
         shuffle = True
     
-    return DataLoader(Dataset_Blocks(dt, blocks, targets, device), batch_size=batch_size, shuffle=shuffle, num_workers=0)
+    return DataLoader(Dataset_Blocks(dt, blocks, targets, device, options), batch_size=batch_size, shuffle=shuffle, num_workers=0)
 
 
 # def get_loader_multi(indir):
