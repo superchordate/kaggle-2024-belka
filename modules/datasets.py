@@ -40,7 +40,7 @@ class Dataset_Blocks(Dataset):
 
         return self.ids[idx], torch.from_numpy(ix).type(torch.float).to(self.device), self.targets[idx]
 
-def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'cpu', options = {}):
+def get_loader(indir, protein_name, on_gcp = False, device = 'cpu', options = {}):
     
     print(f'loading {indir} {protein_name}')
     istest = 'test' in indir
@@ -48,8 +48,8 @@ def get_loader(indir, protein_name, n_files = False, on_gcp = False, device = 'c
     getcols = ['id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'] + ([] if istest else ['binds'])
     
     dt = []
-    if n_files:
-        for file in np.random.choice(listfiles(f'{indir}/base/', protein_name), n_files):
+    if options['n_files']:
+        for file in np.random.choice(listfiles(f'{indir}/base/', protein_name), options['n_files']):
             dt.append(pl.read_parquet(file, columns = getcols))
             del file
     else:
