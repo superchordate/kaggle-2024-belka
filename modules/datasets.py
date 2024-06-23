@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch
-from modules.utils import listfiles
+from modules.utils import listfiles, gcp
 import numpy as np
 import polars as pl
     
@@ -40,7 +40,7 @@ class Dataset_Blocks(Dataset):
 
         return self.ids[idx], torch.from_numpy(ix).type(torch.float).to(self.device), self.targets[idx]
 
-def get_loader(indir, protein_name, on_gcp = False, device = 'cpu', options = {}):
+def get_loader(indir, protein_name, device = 'cpu', combine_train_val = False, options = {}):
     
     print(f'loading {indir} {protein_name}')
     istest = 'test' in indir
@@ -48,19 +48,26 @@ def get_loader(indir, protein_name, on_gcp = False, device = 'cpu', options = {}
     getcols = ['id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'] + ([] if istest else ['binds'])
     
     dt = []
+    
+    # special case: on gcp we may want to include val files too.
+    if combine_train_val:
+        dofiles = listfiles('train/base/', protein_name) + listfiles('val/base/', protein_name)
+    else:
+        dofiles = listfiles(f'{indir}/base/', protein_name)
+
     if options['n_files']:
-        for file in np.random.choice(listfiles(f'{indir}/base/', protein_name), options['n_files']):
+        for file in np.random.choice(dofiles, options['n_files']):
             dt.append(pl.read_parquet(file, columns = getcols))
             del file
     else:
-        for file in listfiles(f'{indir}/base/', protein_name):
+        for file in dofiles:
             dt.append(pl.read_parquet(file, columns = getcols))
             del file
     dt = pl.concat(dt)
 
     print(f'read {dt.shape[0]/1000/1000:,.2f} M rows')
 
-    blocks_file = 'building_blocks.parquet' if on_gcp else ('out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet')
+    blocks_file = 'building_blocks.parquet' if gcp() else ('out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet')
     blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp_pca', 'onehot_pca'])
 
     if istest:

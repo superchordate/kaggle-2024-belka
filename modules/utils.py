@@ -21,12 +21,18 @@ def load1(path):
         obj = pickle.load(pkl_file)
     return obj
 
-def pad0(x):    
-    if x < 10: x = '0' + str(x)
+def pad0(x, n = 3):
+    if x < 10 and n >= 3: 
+        x = '00' + str(x)
+    elif x < 100 or (x < 10 and n == 2): 
+        x = '0' + str(x)
     return x
 
-def listfiles(dir, pattern):
-    return [dir + '/' + f for f in os.listdir(dir) if pattern in f]
+def listfiles(dir, pattern = None):
+    if pattern:
+        return [dir + '/' + f for f in os.listdir(dir) if pattern in f]
+    else:
+        return [dir + '/' + f for f in os.listdir(dir)]
 
 def write_parquet_from_pyarrow(x, path):
     writer = pq.ParquetWriter(path, x.schema)

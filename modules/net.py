@@ -144,7 +144,7 @@ def run_val(loader, net, print_batches = 2000):
 def save_model(model, folder, name, verbose = True):
     model_scripted = torch.jit.script(model.cpu())
     model_scripted.save(f'{folder}/{name}.pt')
-    if gcp(): os.system(f'gsutil cp {name}.pt gs://kaggle-417721/{name}.pt')
+    if gcp(): os.system(f'gsutil cp {folder}/{name}.pt gs://kaggle-417721/{name}.pt')
     if verbose: print(f'saved {folder}/{name}.pt')
     model = model.to(device())
     model = model.train()
