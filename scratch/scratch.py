@@ -16,3 +16,10 @@ blocks_ecfp_pca3 = blocks_ecfp_pca[blocks['buildingblock3_index']]
 blocks_ecfp_pca = np.concatenate([blocks_ecfp_pca1, blocks_ecfp_pca2, blocks_ecfp_pca3], axis = 1)
 
 len(blocks_ecfp_pca[0])
+
+from modules.mols import get_blocks
+from chemml.chem import Molecule
+ 
+building_blocks = get_blocks('train', just_testing = True)
+
+mol = Molecule(building_blocks['smiles'], input_type='smiles')
