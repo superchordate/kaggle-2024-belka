@@ -2,20 +2,20 @@ import lightgbm as lgb
 import numpy as np
 import polars as pl
 import pandas as pd
-from modules.utils import listfiles, pad0, load1
+from modules.utils import listfiles, pad0, save1, fileexists, dircreate
 from modules.score import kaggle_score
-from modules.mols import add_block_ecfps
+from modules.mols import features
 import os
 from datetime import datetime
 from distributed import Client, LocalCluster
+import dask.array as da
 
-cluster = LocalCluster(n_workers=1)
-client = Client(cluster)
-dask_model = lgb.DaskLGBMClassifier(client=client)
-dask_model.set_params(client=client)
+#cluster = LocalCluster(n_workers=8)
+#client = Client(cluster)
 
 n_files = None
 run_name = 'filesall'
+dircreate('out/gbm')
 
 params = {
     "objective": "binary",
@@ -32,22 +32,24 @@ params = {
     'feature_fraction': 0.5,
     'feature_fraction_bynode': 0.5,
     'extra_trees': True,
-    'max_bin': 100
+    'max_bin': 100,
+    'keep_training_booster': True
 }
 
-train_blocks = load1('out/train/train_blocks.pkl')
-val_blocks = load1('out/train/val_blocks.pkl')
-# train_blocks_all = pl.read_parquet('out/train/building_blocks.parquet').to_pandas()
-test_blocks = pl.read_parquet('out/test/building_blocks.parquet').to_pandas()
-
-gbms = {}
+train_val_blocks = pl.read_parquet('out/train/building_blocks.parquet')
 val_data = []
-blocks = pl.read_parquet('out/train/building_blocks.parquet')
 for protein_name in ['sEH', 'BRD4', 'HSA']:
     
     model_path = f'out/gbm/gbm-{run_name}-{protein_name}.gbm'
 
     if not os.path.exists(model_path):
+
+        #dask_model = lgb.DaskLGBMClassifier(client=client)        
+        #gbm = lgb.train(
+        #    params, 
+        #    num_boost_round=20,
+        #    callbacks=[lgb.early_stopping(stopping_rounds=15)]
+        #)
 
         print(f'Training model for {protein_name}')
 
@@ -61,24 +63,26 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
         for file in dofiles:
             ct+= 1
             print(f'    {protein_name} {ct} of {n_files}: {file}')
-            idt = add_block_ecfps(file, train_blocks).select(['binds', 'ecfp_pca'])
-            iX = np.vstack(idt['ecfp_pca'].to_numpy())
+            idt = pl.read_parquet(file)
+            iX = features(idt, train_val_blocks)
             iy = idt['binds'].to_numpy()
-            
             lgb_train = lgb.Dataset(iX, iy)
-            if 'gbm' not in globals():
-                gbm = lgb.train(params, lgb_train, num_boost_round=10)
+        
+            #dask_model.fit(da.from_array(iX), da.from_array(iy))            
+            #save1(dask_model, model_path)
+            if fileexists(model_path):
+                gbm = lgb.train(params, lgb_train, init_model = model_path)
             else:
-                gbm = lgb.train(params, lgb_train, num_boost_round=10, init_model=gbm)
-            
+                gbm = lgb.train(params, lgb_train)
             gbm.save_model(model_path)
+            
             del file, idt, iX, iy, lgb_train
 
-        gbms[protein_name] = gbm
         del gbm
         
 
 print('validate model')
+val_blocks = load1('out/train/val_blocks.pkl')
 val_data = []
 for protein_name in ['sEH', 'BRD4', 'HSA']:
         
@@ -116,6 +120,7 @@ print(f'expected score: {expected_score :.2f}')
 print('submit')
 submission = []
 blocks = pl.read_parquet('out/test/building_blocks.parquet')
+test_blocks = pl.read_parquet('out/test/building_blocks.parquet').to_pandas()
 for protein_name in ['sEH', 'BRD4', 'HSA']:
         
     dt = []

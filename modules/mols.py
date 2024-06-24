@@ -133,3 +133,14 @@ def get_blocks(train_test, return_pyarrow = True):
 #     # dt.write_parquet(file_path)
     
 #     return dt   
+
+def features(dt, blocks):
+
+    iblocks_ecfp_pca = [np.vstack(blocks['ecfp_pca'][dt[x]]) for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+    iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
+
+    iblocks_onehot_pca = [np.vstack(blocks['onehot_pca'][dt[x]]) for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+    iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
+
+    return(np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1))
+
