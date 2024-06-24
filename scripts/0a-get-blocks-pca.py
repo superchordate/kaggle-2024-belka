@@ -1,6 +1,6 @@
 import polars as pl
 from modules.preprocessing import get_pca
-from modules.utils import save1, fileremove
+from modules.utils import save1, fileremove, dircreate
 from modules.mols import get_blocks
 import numpy as np
 
@@ -8,6 +8,9 @@ trainblockspath = 'out/train/building_blocks.parquet'
 
 # remove prior files. 
 fileremove(trainblockspath)
+dircreate('out')
+dircreate('out/train')
+dircreate('out/test')
 
 # get initial blocks, without PCA.
 get_blocks('train', return_pyarrow = False)

@@ -7,7 +7,7 @@ import pyarrow.compute as pc
 import numpy as np
 from sklearn.model_selection import train_test_split
 from modules.utils import dircreate, save1, pad0, write_parquet_from_pyarrow
-from modules.mols import get_blocks, add_block_efcps
+from modules.mols import get_blocks
 import polars as pl
 
 fromscratch = False # to reset files in folders.

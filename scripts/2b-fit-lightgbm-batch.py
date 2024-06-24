@@ -13,8 +13,8 @@ import dask.array as da
 #cluster = LocalCluster(n_workers=8)
 #client = Client(cluster)
 
-n_files = None
-run_name = 'filesall'
+n_files = 10
+run_name = 'files10-onehot'
 dircreate('out/gbm')
 
 params = {
@@ -63,6 +63,7 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
         for file in dofiles:
             ct+= 1
             print(f'    {protein_name} {ct} of {n_files}: {file}')
+            print('features')
             idt = pl.read_parquet(file)
             iX = features(idt, train_val_blocks)
             iy = idt['binds'].to_numpy()
@@ -70,6 +71,8 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
         
             #dask_model.fit(da.from_array(iX), da.from_array(iy))            
             #save1(dask_model, model_path)
+            
+            print('train')
             if fileexists(model_path):
                 gbm = lgb.train(params, lgb_train, init_model = model_path)
             else:
