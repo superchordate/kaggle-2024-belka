@@ -3,7 +3,7 @@
 from modules.datasets import get_loader
 from modules.net import train, run_val
 from modules.score import kaggle_score
-from modules.utils import pad0
+from modules.utils import pad0, dircreate
 import os, torch
 from datetime import datetime
 import pandas as pd
@@ -69,8 +69,8 @@ submission = []
 for protein_name in ['sEH', 'BRD4', 'HSA']:
     
     ids, labels, scores = run_val(
-        get_loader('out/test/test/', protein_name), 
-        nets[protein_name]
+        get_loader('out/test/test/', protein_name, options = options, submit = True), 
+        nets[protein_name]        
     )
     
     submission.append(pd.DataFrame({
@@ -79,7 +79,8 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
     }))
     
     del protein_name, ids, labels, scores
-    
+
+dircreate('out/submit')
 submission = pd.concat(submission).sort_values('id')
 # submission.to_parquet(f'out/test/submission-{datetime.today().strftime("%Y%m%d")}-{pad0(int(expected_score*100))}.parquet', index = False)
 submission.to_parquet(f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{run_name}-{pad0(int(expected_score*100))}.parquet', index = False)
