@@ -5,6 +5,7 @@ import torch.optim as optim
 import numpy as np
 import os
 from modules.utils import device, gcp
+from sklearn.metrics import f1_score, auc, roc_curve, precision_score, recall_score
 
 def unlist(x):
     return np.reshape(x, (1,-1))[0]
@@ -99,7 +100,7 @@ def train(
     print(f'training {save_name}')
     print(f'{len(loader)} batches')
     for epoch in range(epochs):
-        print(f'epoch {epoch}')
+        print(f'epoch {epoch + 1}')
         loss = 0.0
         scores = []
         labels = []
@@ -148,3 +149,27 @@ def save_model(model, folder, name, verbose = True):
     if verbose: print(f'saved {folder}/{name}.pt')
     model = model.to(device())
     model = model.train()
+
+def print_results(actual, pred_proba, metrics = ['f1', 'gini', 'precision', 'recall']):
+
+    labels = labels
+    predictions = [1 if x > 0.5 else 0 for x in pred_proba]   
+
+    results = {}
+
+    if 'f1' in metrics:
+        results['f1'] = round(f1_score(actual, predictions), 2)
+    
+    if 'gini' in metrics:        
+        fpr, tpr, thresholds = roc_curve(actual, pred_proba, pos_label=1)
+        auc_result = auc(fpr, tpr)
+        results['gini'] = round(auc_result*2-1, 2)
+
+    if 'precision' in metrics:
+        results['precision'] = round(precision_score(actual, predictions), 2)
+
+    if 'recall' in metrics:
+        results['recall'] = round(recall_score(actual, predictions), 2)
+
+    print(results)
+        
