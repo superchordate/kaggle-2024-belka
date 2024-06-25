@@ -3,3 +3,4 @@ data/
 out/
 not-tracked/
 __pycache__/
+.ipynb_checkpoints/
