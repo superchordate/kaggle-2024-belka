@@ -16,6 +16,9 @@ gcloud config set project data-science-417721
 
 gcloud batch jobs delete fit --location us-central1
 gcloud batch jobs submit fit --location us-central1 --config jobs/train-model/instance-template.json
+
+gcloud batch jobs delete replaceblockids --location us-central1
+gcloud batch jobs submit replaceblockids --location us-central1 --config jobs/replace-block-ids/instance-template.json
 ```
 
 Helpful links and commands:
