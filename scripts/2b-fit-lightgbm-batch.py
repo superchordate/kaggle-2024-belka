@@ -2,7 +2,7 @@ import lightgbm as lgb
 import numpy as np
 import polars as pl
 import pandas as pd
-from modules.utils import listfiles, pad0, save1, fileexists, dircreate
+from modules.utils import listfiles, pad0, save1, fileexists, dircreate, load1
 from modules.score import kaggle_score
 from modules.mols import features
 import os
@@ -85,8 +85,8 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
         
 
 print('validate model')
-val_blocks = load1('out/train/val_blocks.pkl')
 val_data = []
+gbms = {}
 for protein_name in ['sEH', 'BRD4', 'HSA']:
         
     model_path = f'out/gbm/gbm-{run_name}-{protein_name}.gbm'
@@ -95,11 +95,13 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
     dofiles = listfiles('out/train/val/base/', protein_name)
     if n_files: dofiles = np.random.choice(dofiles, n_files)
 
+    ct = 0
     for file in dofiles:
         
-        print(f'    {file}')
-        idt = add_block_ecfps(file, val_blocks).select(['binds', 'ecfp_pca'])
-        iX = np.vstack(idt['ecfp_pca'].to_numpy())
+        ct += 1
+        print(f'    {protein_name} {ct} of {len(dofiles)}: {file}')
+        idt = pl.read_parquet(file)      
+        iX = features(idt, train_val_blocks)
         iy = idt['binds'].to_numpy()
 
         val_data.append(pd.DataFrame({
@@ -122,27 +124,26 @@ print(f'expected score: {expected_score :.2f}')
 # run test to get the actual submission.
 print('submit')
 submission = []
-blocks = pl.read_parquet('out/test/building_blocks.parquet')
-test_blocks = pl.read_parquet('out/test/building_blocks.parquet').to_pandas()
+test_blocks = pl.read_parquet('out/test/building_blocks.parquet')
 for protein_name in ['sEH', 'BRD4', 'HSA']:
-        
-    dt = []
-    for file in listfiles('out/test/test/base/', protein_name):
-        dt.append(add_block_ecfps(file, test_blocks))
-        del file
-    dt = pl.concat(dt).select(['id', 'ecfp_pca'])
-
-    scores_test = gbms[protein_name].predict(
-        np.vstack(dt['ecfp_pca'].to_numpy()), 
-        num_iteration=gbms[protein_name].best_iteration
-    )
-
-    submission.append(pd.DataFrame({
-        'id': dt['id'].to_numpy(),
-        'binds': scores_test
-    }))
     
-    del protein_name, scores_test, dt
+    dofiles = listfiles('out/test/test/base/', protein_name)
+    ct = 0
+    for file in dofiles:
+        
+        ct += 1
+        print(f'    {protein_name} {ct} of {len(dofiles)}: {file}')
+        idt = pl.read_parquet(file)      
+        iX = features(idt, test_blocks)
+
+        submission.append(pd.DataFrame({
+            'id': pl.read_parquet(file)['id'], 
+            'binds': gbms[protein_name].predict(iX)
+        }))
+        
+        del file, idt, iX
+    
+    del protein_name
     
 submission = pd.concat(submission).sort_values('id')
 submission.to_parquet(f'out/gbm/submission-{datetime.today().strftime("%Y%m%d")}-lgbm-{run_name}-{pad0(int(expected_score*100))}.parquet', index = False)
