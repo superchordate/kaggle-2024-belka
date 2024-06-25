@@ -3,12 +3,10 @@ import pandas as pd
 import pandas.api.types
 import sklearn.metrics
 from modules import kaggle_metric_utilities
-# from modules.utils import unlist
-
+from sklearn.metrics import f1_score, auc, roc_curve, precision_score, recall_score
 
 class ParticipantVisibleError(Exception):
     pass
-
 
 def kaggle_score(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column_name: str) -> float:
     
@@ -59,25 +57,24 @@ def kaggle_score(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column
 
     return np.mean(scores)
 
-# def print_results(labels, scores):
+def print_results(actual, pred_proba, metrics = ['f1', 'gini', 'precision', 'recall']):
 
-#     labels = unlist(labels)
-#     predictions = unlist(predictions)
-#     scores = unlist(scores)
-    
-#     fpr, tpr, thresholds = roc_curve(labels, scores, pos_label=1)
-#     auc_result = auc(fpr, tpr)
-#     gini = auc_result*2-1
-#     f1 = f1_score(labels, predictions)
-#     aps = average_precision_score(labels, scores)
+    predictions = [1 if x > 0.5 else 0 for x in pred_proba]   
 
-#     print({
-#         'epoch': epoch,
-#         'batch': batch,
-#         'loss': round(loss, 4) if loss else 'val',
-#         'f1': round(f1, 4),
-#         'gini': round(gini, 4),
-#         'aps': round(aps, 4)
-#     })
+    results = {}
+
+    if 'f1' in metrics:
+        results['f1'] = round(f1_score(actual, predictions), 2)
     
-#     return aps
+    if 'gini' in metrics:        
+        fpr, tpr, thresholds = roc_curve(actual, pred_proba, pos_label=1)
+        auc_result = auc(fpr, tpr)
+        results['gini'] = round(auc_result*2-1, 2)
+
+    if 'precision' in metrics:
+        results['precision'] = round(precision_score(actual, predictions), 2)
+
+    if 'recall' in metrics:
+        results['recall'] = round(recall_score(actual, predictions), 2)
+
+    print(results)

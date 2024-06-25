@@ -1,90 +1,96 @@
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch
-from modules.utils import listfiles, gcp
+from modules.mols import features
 import numpy as np
 import polars as pl
     
-class Dataset_Blocks(Dataset):
+class Dataset_Mols(Dataset):
 
-    def __init__(self, dt, blocks, targets = None, device = 'cpu', options = {}):
+    def __init__(self, mols, blocks, targets = None, device = 'cpu', options = {}):
+        
+        self.istest = not isinstance(targets, pl.DataFrame)
+        
+        if not self.istest :
+            targets = targets.with_columns(pl.col('binds_sEH').cast(pl.Float32))
+            targets = targets.with_columns(pl.col('binds_BRD4').cast(pl.Float32))
+            targets = targets.with_columns(pl.col('binds_HSA').cast(pl.Float32))
         
         self.device = device
         self.options = options
-        self.ids = dt['id'].to_numpy()
-        self.blocks = dt.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
-        self.blocks_ecfp_pca = np.array([list(x) for x in blocks['ecfp_pca']])
-        self.blocks_onehot_pca = np.array([list(x) for x in blocks['onehot_pca']])
-        if isinstance(targets, pl.Series):
-            self.targets = torch.reshape(torch.from_numpy(dt['binds'].to_numpy()).type(torch.float), (-1, 1)).to(device)
-        else:
-            # add dummy targets if this is test. 
-            self.targets = torch.from_numpy(np.array([-1]*dt.shape[0])).type(torch.float).to(device)
+        self.molecule_ids = mols['molecule_id']        
+        self.mols = mols.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
+        self.blocks = blocks
+        self.targets = targets
+
+        # targets = [np.vstack(targets[x].cast(pl.Float32)) for x in ['binds_sEH', 'binds_BRD4', 'binds_HSA']]            
 
     def __len__(self):
-        return self.blocks.shape[0]
+        return self.mols.shape[0]
     
     def __getitem__(self, idx):
 
-        idt = self.blocks[idx]
+        idt = self.mols[idx]
 
-        iblocks_ecfp_pca = [self.blocks_ecfp_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
-        iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
+        iX = features(idt, self.blocks)
 
-        if self.options['onehot']:
-            iblocks_onehot_pca = [self.blocks_onehot_pca[idt[x]] for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
-            iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
-            ix = np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1)
+        if not self.istest:
+            
+            itargets = self.targets[idx]
+        
+            iy = {
+                'sEH': torch.from_numpy(itargets['binds_sEH'].to_numpy()).to(self.device),
+                'BRD4': torch.from_numpy(itargets['binds_BRD4'].to_numpy()).to(self.device),
+                'HSA': torch.from_numpy(itargets['binds_HSA'].to_numpy()).to(self.device)
+            }
+        
         else:
-            ix = iblocks_ecfp_pca
-
-        return self.ids[idx], torch.from_numpy(ix).type(torch.float).to(self.device), self.targets[idx]
-
-def get_loader(indir, protein_name, device = 'cpu', combine_train_val = False, options = {}, submit = False):
+            
+            iy = {'sEH': [], 'BRD4': [], 'HSA': []}
     
-    print(f'loading {indir} {protein_name}')
+        return self.molecule_ids[idx], torch.from_numpy(iX).type(torch.float).to(self.device), iy
+            
+
+def get_loader(indir, device = 'cpu',  options = {}, submit = False):
+    
+    molpath = f'{indir}/mols.parquet'
+    print(f'loading {molpath}')
     istest = 'test' in indir
     isval = 'val' in indir
-    getcols = ['id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'] + ([] if istest else ['binds'])
-    
-    dt = []
-    
-    # special case: on gcp we may want to include val files too.
-    if combine_train_val:
-        dofiles = listfiles('train/base/', protein_name) + listfiles('val/base/', protein_name)
+    getcols = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']
+    if not istest: getcols = getcols + ['binds_sEH', 'binds_BRD4', 'binds_HSA']
+
+    if (not submit) and (str(options['n_rows']) != 'all'):
+        mols = pl.read_parquet(molpath, columns = getcols, n_rows = options['n_rows'])
     else:
-        dofiles = listfiles(f'{indir}/base/', protein_name)
+        mols = pl.read_parquet(molpath, columns = getcols)
+    print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
-    if ('n_files' in options) and (not submit):
-        for file in np.random.choice(dofiles, options['n_files']):
-            dt.append(pl.read_parquet(file, columns = getcols))
-            del file
-    else:
-        for file in dofiles:
-            dt.append(pl.read_parquet(file, columns = getcols))
-            del file
-    dt = pl.concat(dt)
-
-    print(f'read {dt.shape[0]/1000/1000:,.2f} M rows')
-
-    blocks_file = 'building_blocks.parquet' if gcp() else ('out/train/building_blocks.parquet' if not istest else 'out/test/building_blocks.parquet')
-    blocks = pl.read_parquet(blocks_file, columns = ['index', 'ecfp_pca', 'onehot_pca'])
+    # we must use the full blocks (not train/val) to have aligned indexes.
+    blockpath = 'out/' + ('test' if istest else 'train') + '/building_blocks.parquet'
+    print(f'blocks: {blockpath}')
+    blocks = pl.read_parquet(blockpath, columns = ['ecfp_pca', 'onehot_pca'])
 
     if istest:
         targets = None
         batch_size = 1000
         shuffle = False
     elif isval:
-        targets = dt['binds']
+        targets = mols.select(['binds_sEH', 'binds_BRD4', 'binds_HSA'])
         batch_size = 1000
         shuffle = False
     else:
-        targets = dt['binds']
-        batch_size = 100
+        targets = mols.select(['binds_sEH', 'binds_BRD4', 'binds_HSA'])
+        batch_size = options['train_batch_size']
         shuffle = True
     
-    return DataLoader(Dataset_Blocks(dt, blocks, targets, device, options), batch_size=batch_size, shuffle=shuffle, num_workers=0)
-
+    return DataLoader(
+        Dataset_Mols(
+            mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']), 
+            blocks, targets, device, options
+        ), 
+        batch_size=batch_size, shuffle = shuffle, num_workers = 0
+    )
 
 # def get_loader_multi(indir):
     

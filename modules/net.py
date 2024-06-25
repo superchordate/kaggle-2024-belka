@@ -5,10 +5,6 @@ import torch.optim as optim
 import numpy as np
 import os
 from modules.utils import device, gcp
-from sklearn.metrics import f1_score, auc, roc_curve, precision_score, recall_score
-
-def unlist(x):
-    return np.reshape(x, (1,-1))[0]
 
 class MLP(nn.Module):
     def __init__(self, input_len = 1024):
@@ -43,21 +39,31 @@ class MLP(nn.Module):
         return x
 
 class MLP_multi(nn.Module):
-    def __init__(self, input_len = 1024):
+    def __init__(self, options, input_len = 1024):
+
         super().__init__()
+
+        self.dropoutpct = options['dropout']/100
         self.input_len = input_len
+        print(f'input_len: {input_len}')
+
         self.fc1 = nn.Linear(self.input_len, self.input_len)
         self.batchnorm1 = nn.BatchNorm1d(self.input_len)
-        self.dropout1 = nn.Dropout(0.5)
+        self.dropout1 = nn.Dropout(self.dropoutpct)
+
         self.fc3 = nn.Linear(self.input_len, 500)
         self.batchnorm3 = nn.BatchNorm1d(500)
-        self.dropout3 = nn.Dropout(0.5)
+        self.dropout3 = nn.Dropout(self.dropoutpct)
+
         self.fc4 = nn.Linear(500, 100)
         self.batchnorm4 = nn.BatchNorm1d(100)
-        self.dropout4 = nn.Dropout(0.5)
+        self.dropout4 = nn.Dropout(self.dropoutpct)
+
         self.fc5 = nn.Linear(100, 10)
-        self.fc_fin = nn.Linear(10, 1)
+        self.fc_fin = nn.Linear(10, 3)
+
         self.sigmoid = nn.Sigmoid()
+
     def forward(self, x):
         x = torch.flatten(x, 1) # flatten all dimensions except batch        
         x = F.relu(self.fc1(x))
@@ -72,13 +78,17 @@ class MLP_multi(nn.Module):
         x = F.relu(self.fc5(x))        
         x = self.fc_fin(x)
         x = self.sigmoid(x)
-        return x
+        return {
+            'sEH': torch.reshape(x[:,0], (-1, 1)), 
+            'BRD4': torch.reshape(x[:,1], (-1, 1)), 
+            'HSA': torch.reshape(x[:,2], (-1, 1))
+        }
     
 def train(
         loader, 
         save_folder,
-        save_name,
-        epochs = 5, 
+        save_name,        
+        options,
         print_batches = 2000,
         net = None, 
         optimizer = None,
@@ -89,58 +99,80 @@ def train(
     if not net:
         # run one loader loop to get the input size.
         for i, data in enumerate(loader, 0):
-            iids, inputs, ilabels = data
-            net = MLP(input_len = len(inputs[0][0])).to(idevice)
-            del i, data, iids, inputs, ilabels
+            molecule_ids, iX, iy = data
+            net = MLP_multi(options = options, input_len = len(iX[0][0])).to(idevice)
+            del i, data, molecule_ids, iX, iy
             break
     
-    if not optimizer: optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
-    if not criterion: criterion = nn.BCELoss().to(idevice)
+    if not optimizer:
+        optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+
+    if not criterion: 
+        criterion1 = nn.BCELoss().to(idevice)
+        criterion2 = nn.BCELoss().to(idevice)
+        criterion3 = nn.BCELoss().to(idevice)
+        #criterion = nn.CrossEntropyLoss().to(idevice)
     
     print(f'training {save_name}')
-    print(f'{len(loader)} batches')
-    for epoch in range(epochs):
+    print(f'{len(loader):,.0f} batches')
+    for epoch in range(options['epochs']):
         print(f'epoch {epoch + 1}')
         loss = 0.0
-        scores = []
-        labels = []
-        ids = []
+        scores = {'sEH': [], 'BRD4': [], 'HSA': []}
+        labels = {'sEH': [], 'BRD4': [], 'HSA': []}
         for i, data in enumerate(loader, 0):
-            iids, inputs, ilabels = data
+            
+            imolecule_ids, iX, iy = data
             optimizer.zero_grad()
-            outputs = net(inputs)        
-            iloss = criterion(outputs, ilabels)
+            outputs = net(iX)
+            
+            loss1 = criterion1(outputs['sEH'], iy['sEH'])
+            loss2 = criterion2(outputs['BRD4'], iy['BRD4'])
+            loss3 = criterion3(outputs['HSA'], iy['HSA'])
+            
+            iloss = loss1 + loss2 + loss3
             iloss.backward()
             optimizer.step()
+
             loss += iloss.cpu().item()
-            labels = np.append(labels, ilabels.cpu().tolist())
-            scores = np.append(scores, outputs.cpu().tolist())
-            ids = np.append(ids, iids)
+            for protein_name in iy.keys():
+                labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
+                scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
+
             if (i % print_batches == 0) and (i != 0):
                 print(f'batch {i}, loss: {loss:.4f}')
                 loss = 0.0
                 save_model(net, save_folder, save_name, verbose = False)
-            del i, data, iids, inputs, ilabels, outputs, iloss
+
+            del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
     
     save_model(net, save_folder, save_name, verbose = False)
-    return ids, net, np.array(unlist(labels)), np.array(unlist(scores))
+    return net, labels, scores
     
-def run_val(loader, net, print_batches = 2000):    
+def run_val(loader, net, print_batches = 2000): 
+
     print(f'{len(loader)} batches')
+
     with torch.no_grad():
-        scores = []
-        labels = []
-        ids = []
+        scores = {'sEH': [], 'BRD4': [], 'HSA': []}
+        labels = {'sEH': [], 'BRD4': [], 'HSA': []}
+        molecule_ids = []
         for i, data in enumerate(loader, 0):
-            iids, inputs, ilabels = data
-            outputs = net(inputs)
-            labels = np.append(labels, ilabels.tolist())
-            scores = np.append(scores, outputs.tolist())
-            ids = np.append(ids, iids)
+            
+            imolecule_ids, iX, iy = data
+            outputs = net(iX)
+            
+            for protein_name in outputs.keys():
+                if len(iy[protein_name]) > 0: # will be empty if this is a test set.
+                    labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
+                scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
+
+            molecule_ids = np.append(molecule_ids, imolecule_ids)
             if (i % print_batches == 0) and (i != 0):
                 print(f'batch {i}')
-            del i, data, iids, inputs, ilabels, outputs
-    return np.array(unlist(ids)), np.array(unlist(labels)), np.array(unlist(scores))
+            del i, data, imolecule_ids, iX, iy, outputs
+            
+    return molecule_ids, labels, scores
 
 def save_model(model, folder, name, verbose = True):
     model_scripted = torch.jit.script(model.cpu())
@@ -150,26 +182,4 @@ def save_model(model, folder, name, verbose = True):
     model = model.to(device())
     model = model.train()
 
-def print_results(actual, pred_proba, metrics = ['f1', 'gini', 'precision', 'recall']):
-
-    labels = labels
-    predictions = [1 if x > 0.5 else 0 for x in pred_proba]   
-
-    results = {}
-
-    if 'f1' in metrics:
-        results['f1'] = round(f1_score(actual, predictions), 2)
-    
-    if 'gini' in metrics:        
-        fpr, tpr, thresholds = roc_curve(actual, pred_proba, pos_label=1)
-        auc_result = auc(fpr, tpr)
-        results['gini'] = round(auc_result*2-1, 2)
-
-    if 'precision' in metrics:
-        results['precision'] = round(precision_score(actual, predictions), 2)
-
-    if 'recall' in metrics:
-        results['recall'] = round(recall_score(actual, predictions), 2)
-
-    print(results)
         
