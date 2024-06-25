@@ -1,10 +1,8 @@
 # molecule data is repeated for each protein.
 # we can greatly compress data by merging so each molecule is only stored once.
 
-import polars as pl
 import pyarrow.parquet as pq
 import gc
-import numpy as np
 from modules.utils import fileexists
 
 # split the main table into 3 sub-tables, one for each protein.

@@ -38,18 +38,18 @@ for protein_name in ['BRD4', 'HSA']:
     mols = mols.with_row_index()
     mols = mols.rename({'index': 'molecule_id'})
     
-    mols = mols.select([
-        'molecule_id',
-        'molecule_smiles',
-        'buildingblock1_index',
-        'buildingblock2_index',
-        'buildingblock3_index',
-        'binds_sEH',
-        'binds_BRD4',
-        'binds_HSA'
-    ])
-    
-    mols.write_parquet(f'out/{train_test}/mols.parquet')
+mols = mols.select([
+    'molecule_id',
+    'molecule_smiles',
+    'buildingblock1_index',
+    'buildingblock2_index',
+    'buildingblock3_index',
+    'binds_sEH',
+    'binds_BRD4',
+    'binds_HSA'
+])
+
+mols.write_parquet(f'out/{train_test}/mols.parquet')
     
 # now we can replace protein files with simple files with id and row_index as molecule id.
 for protein_name in ['sEH', 'BRD4', 'HSA']:       
@@ -81,10 +81,7 @@ mols = mols.select([
     'molecule_smiles',
     'buildingblock1_index',
     'buildingblock2_index',
-    'buildingblock3_index',
-    'binds_sEH',
-    'binds_BRD4',
-    'binds_HSA'
+    'buildingblock3_index'
 ])
 
 mols.write_parquet(f'out/{train_test}/mols.parquet')

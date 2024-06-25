@@ -2,9 +2,10 @@ import lightgbm as lgb
 import numpy as np
 import polars as pl
 import pandas as pd
-from modules.utils import listfiles, pad0, save1, fileexists, dircreate, load1
+from modules.utils import listfiles, pad0, save1, fileexists, dircreate, load1, unlist
 from modules.score import kaggle_score
 from modules.mols import features
+from modules.net import print_results
 import os
 from datetime import datetime
 from distributed import Client, LocalCluster
@@ -13,8 +14,11 @@ import dask.array as da
 #cluster = LocalCluster(n_workers=8)
 #client = Client(cluster)
 
-n_files = 10
-run_name = 'files10-onehot'
+proteins = ['sEH', 'BRD4', 'HSA']
+proteins = ['sEH']
+
+n_files = 2
+run_name = 'files2-onehot'
 dircreate('out/gbm')
 
 params = {
@@ -37,10 +41,14 @@ params = {
 }
 
 train_val_blocks = pl.read_parquet('out/train/building_blocks.parquet')
-val_data = []
-for protein_name in ['sEH', 'BRD4', 'HSA']:
+if n_files:
+    train_Xs = {}
+    train_ys = {}
+for protein_name in proteins:
     
     model_path = f'out/gbm/gbm-{run_name}-{protein_name}.gbm'
+    train_Xs[protein_name] = []
+    train_ys[protein_name] = []
 
     if not os.path.exists(model_path):
 
@@ -63,7 +71,7 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
         for file in dofiles:
             ct+= 1
             print(f'    {protein_name} {ct} of {n_files}: {file}')
-            print('features')
+            #print('features')
             idt = pl.read_parquet(file)
             iX = features(idt, train_val_blocks)
             iy = idt['binds'].to_numpy()
@@ -72,22 +80,31 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
             #dask_model.fit(da.from_array(iX), da.from_array(iy))            
             #save1(dask_model, model_path)
             
-            print('train')
+            #print('train')
             if fileexists(model_path):
                 gbm = lgb.train(params, lgb_train, init_model = model_path)
             else:
                 gbm = lgb.train(params, lgb_train)
             gbm.save_model(model_path)
             
+            if 'train_Xs' in globals():
+                train_Xs[protein_name].append(iX)
+                train_ys[protein_name].append(iy)
             del file, idt, iX, iy, lgb_train
 
         del gbm
-        
+
+if 'train_Xs' in globals():
+    print('measure train accuracy for sEH')
+    gbm = lgb.Booster(model_file = f'out/gbm/gbm-{run_name}-sEH.gbm')
+    preds = unlist([gbm.predict(iX) for iX in train_Xs['sEH']])
+    actual = unlist(train_ys)
+    print_results(actual, preds)
 
 print('validate model')
 val_data = []
 gbms = {}
-for protein_name in ['sEH', 'BRD4', 'HSA']:
+for protein_name in proteins:
         
     model_path = f'out/gbm/gbm-{run_name}-{protein_name}.gbm'
     gbms[protein_name] = lgb.Booster(model_file = model_path)
@@ -114,8 +131,9 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
         
         del file, idt, iX, iy
 
-
 val_data = pd.concat(val_data).sort_values('id')
+print_results(val_data['binds'], val_data['binds_predict'])
+
 solution = val_data[['id', 'protein_name', 'binds', 'split_group']]
 submission = val_data[['id', 'binds_predict']].rename({'binds_predict': 'binds'})
 expected_score = kaggle_score(solution, submission, "id")
