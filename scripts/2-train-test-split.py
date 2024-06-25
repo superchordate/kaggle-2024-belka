@@ -43,10 +43,10 @@ for train_val in ['train', 'val']:
     imols = imols.filter(pl.col('buildingblock3_index').is_in(antiblocks['index']).not_())
     
     # save result. 
-    imols.to_parquet(f'out/train/{train_val}/mols.parquet')
+    imols.write_parquet(f'out/train/{train_val}/mols.parquet')
     del imols, blocks, antiblocks
         
 # test is the same.
 print('test')
 mols = pl.read_parquet('out/test/mols.parquet')
-mols.to_parquet('out/test/test/mols.parquet')
+mols.write_parquet('out/test/test/mols.parquet')
