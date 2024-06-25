@@ -8,13 +8,15 @@ import os, torch
 from datetime import datetime
 import pandas as pd
 
-run_name = 'files1-dropout50-epochs1'
+run_name = 'files5-dropout50-epochs3'
 options = {
-    'onehot': False, 
-    'n_files': 1, 
-    'epochs': 1,
-    'print_batches': 100,
+    'onehot': True, 
+    'n_files': 5, 
+    'epochs': 3,
+    'print_batches': 5000,
 }
+
+#TODO - compare to 1 epcoch 15 files (same # batches/duration)
 
 # train models. 
 nets = {}
