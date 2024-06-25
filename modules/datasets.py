@@ -51,7 +51,7 @@ class Dataset_Mols(Dataset):
         return self.molecule_ids[idx], torch.from_numpy(iX).type(torch.float).to(self.device), iy
             
 
-def get_loader(indir, device = 'cpu',  options = {}, submit = False):
+def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain = False):
     
     molpath = f'{indir}/mols.parquet'
     print(f'loading {molpath}')
@@ -62,6 +62,8 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False):
 
     if (not submit) and (str(options['n_rows']) != 'all'):
         mols = pl.read_parquet(molpath, columns = getcols, n_rows = options['n_rows'])
+    elif checktrain:
+        mols = pl.read_parquet(molpath, columns = getcols, n_rows = 1000*1000)
     else:
         mols = pl.read_parquet(molpath, columns = getcols)
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')

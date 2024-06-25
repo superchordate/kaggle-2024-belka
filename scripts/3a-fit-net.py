@@ -9,11 +9,13 @@ from datetime import datetime
 import pandas as pd
 import polars as pl
 
+dircreate('out/net')
+
 options = {
-    'epochs': 3,
+    'epochs': 1,
     'train_batch_size': 100,
     'dropout': 50,
-    'n_rows': 100*1000,
+    'n_rows': 'all',
     'print_batches': 500,
 }
 run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
@@ -32,9 +34,9 @@ else:
     net = torch.jit.load(model_path).eval()
 
 # get metrics for train so we can see if we are over-fitting.
-print('measure train accuracy for sEH')
+print('measure train accuracy')
 molecule_ids, labels, scores = run_val(
-    get_loader(indir = 'out/train/train/', options = options), 
+    get_loader(indir = 'out/train/train/', options = options, checktrain = True), 
     net
 )
 for protein_name in ['sEH', 'BRD4', 'HSA']:
