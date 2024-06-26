@@ -21,7 +21,7 @@ class Dataset_Mols(Dataset):
         print('getting features')
         self.device = device
         self.features = features(mols, blocks, options)
-        print(f'{self.features.bytes/1024/1024/1024:.2f} GB')
+        print(f'{sys.getsizeof(self.features)/1024/1024/1024:.2f} GB')
         self.features = torch.from_numpy(self.features).type(torch.float).to(self.device)
 
         self.mol_ids = mols['molecule_id']
@@ -66,10 +66,11 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
     # always read the full file then sample it down. 
     mols = pl.read_parquet(molpath, columns = getcols)
 
-    if (not submit) and (str(options['n_rows']) != 'all'):
+    if checktrain or isval:
+        mols = mols.sample(100*1000)            
+    elif (not submit) and (str(options['n_rows']) != 'all'):
         mols = mols.sample(options['n_rows'])
-    elif checktrain or isval:
-        mols = mols.sample(100*1000)
+    
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
     # we must use the full blocks (not train/val) to have aligned indexes.
