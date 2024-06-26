@@ -1,9 +1,8 @@
-import torch
+import torch, os, time
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-import os
 from modules.utils import device, gcp
 
 class MLP(nn.Module):
@@ -132,6 +131,7 @@ def train(
     print(f'training {save_name}')
     print(f'{len(loader):,.0f} batches')
     for epoch in range(options['epochs']):
+        start_time = time.time()
         print(f'epoch {epoch + 1}')
         loss = 0.0
         scores = {'sEH': [], 'BRD4': [], 'HSA': []}
@@ -156,7 +156,8 @@ def train(
                 scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
 
             if (i % print_batches == 0) and (i != 0):
-                print(f'batch {i}, loss: {loss:.4f}')
+                print(f'batch {i}, loss: {loss:.4f} {(time.time() - start_time)/60:.2f} mins')
+                start_time = time.time()
                 loss = 0.0
                 save_model(net, save_folder, save_name, verbose = False)
 
