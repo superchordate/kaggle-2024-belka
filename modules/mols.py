@@ -134,20 +134,35 @@ def get_blocks(train_test, return_pyarrow = True):
     
 #     return dt   
 
+# def features(dt, blocks, options):
+
+#     if options['ecfp']:
+#         iblocks_ecfp_pca = [np.vstack(blocks['ecfp_pca'][dt[x]]) for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+#         iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
+
+#     if options['onehot']:
+#         iblocks_onehot_pca = [np.vstack(blocks['onehot_pca'][dt[x]]) for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
+#         iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
+
+#     if options['ecfp'] and options['onehot']:
+#         return np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1)
+#     elif options['ecfp']:
+#         return iblocks_ecfp_pca
+#     elif options['onehot']:
+#         return iblocks_onehot_pca
+
 def features(dt, blocks, options):
 
-    if options['ecfp']:
-        iblocks_ecfp_pca = [np.vstack(blocks['ecfp_pca'][dt[x]]) for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
-        iblocks_ecfp_pca = np.concatenate(iblocks_ecfp_pca, axis = 1)
+    idt = dt.join(blocks, left_on = 'buildingblock1_index', right_on = 'index', how = 'inner', suffix = '1') \
+        .join(blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner', suffix = '2') \
+        .join(blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner', suffix = '3')
 
-    if options['onehot']:
-        iblocks_onehot_pca = [np.vstack(blocks['onehot_pca'][dt[x]]) for x in ['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']]
-        iblocks_onehot_pca = np.concatenate(iblocks_onehot_pca, axis = 1)
+    features = idt['ecfp_pca'].list.concat(
+        idt['ecfp_pca2'].list.concat(
+            idt['ecfp_pca3'].list.concat(
+                idt['onehot_pca'].list.concat(
+                    idt['onehot_pca2'].list.concat(
+                        idt['onehot_pca3']
+    )))))
 
-    if options['ecfp'] and options['onehot']:
-        return np.concatenate([iblocks_ecfp_pca, iblocks_onehot_pca], axis = 1)
-    elif options['ecfp']:
-        return iblocks_ecfp_pca
-    elif options['onehot']:
-        return iblocks_onehot_pca
-
+    return(np.vstack(features, casting = 'no'))

@@ -15,11 +15,13 @@ class Dataset_Mols(Dataset):
             targets = targets.with_columns(pl.col('binds_sEH').cast(pl.Float32))
             targets = targets.with_columns(pl.col('binds_BRD4').cast(pl.Float32))
             targets = targets.with_columns(pl.col('binds_HSA').cast(pl.Float32))
+
+        blocks = blocks.with_columns(pl.col('index').cast(pl.Int32)).select(['index', 'ecfp_pca', 'onehot_pca'])
+        mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
         
         self.device = device
-        self.options = options
-        self.molecule_ids = mols['molecule_id']        
-        self.mols = mols.select(['buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
+        self.options = options    
+        self.mols = mols
         self.blocks = blocks
         self.targets = targets
 
@@ -48,7 +50,7 @@ class Dataset_Mols(Dataset):
             
             iy = {'sEH': [], 'BRD4': [], 'HSA': []}
     
-        return self.molecule_ids[idx], torch.from_numpy(iX).type(torch.float).to(self.device), iy
+        return self.mols['molecule_id'][idx], torch.from_numpy(iX).type(torch.float).to(self.device), iy
             
 
 def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain = False):
@@ -71,7 +73,7 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
     # we must use the full blocks (not train/val) to have aligned indexes.
     blockpath = 'out/' + ('test' if istest else 'train') + '/building_blocks.parquet'
     print(f'blocks: {blockpath}')
-    blocks = pl.read_parquet(blockpath, columns = ['ecfp_pca', 'onehot_pca'])
+    blocks = pl.read_parquet(blockpath, columns = ['index', 'ecfp_pca', 'onehot_pca'])
 
     if istest:
         targets = None

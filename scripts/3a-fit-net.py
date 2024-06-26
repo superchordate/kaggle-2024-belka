@@ -15,14 +15,14 @@ useprior = True
 
 options = {
     'epochs': 5,
-    'train_batch_size': 32,
+    'train_batch_size': 100,
     'lr': 0.001,
-    'momentum': 0.99,
+    'momentum': 0.9,
     'onehot': True,
     'ecfp': True,
     'dropout': 50,
-    'n_rows': 5*1000*1000,
-    'print_batches': 5000,
+    'n_rows': 'all',
+    'print_batches': 5*1000,
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
@@ -103,42 +103,42 @@ expected_score = kaggle_score(solution, submission, "id")
 print(f'expected score: {expected_score :.2f}')
 
 # run test to get the actual submission. 
-# print('submit')
-# molecule_ids, labels, scores = run_val(
-#     get_loader('out/test/test/', options = options, submit = True), 
-#     net
-# )
-# del labels
-# submission = []
-# for protein_name in ['sEH', 'BRD4', 'HSA']:
+print('submit')
+molecule_ids, labels, scores = run_val(
+    get_loader('out/test/test/', options = options, submit = True), 
+    net
+)
+del labels
+submission = []
+for protein_name in ['sEH', 'BRD4', 'HSA']:
 
-#     results = pl.from_pandas(pd.DataFrame({
-#         'molecule_id': molecule_ids,
-#         'binds': scores[protein_name]
-#     })).with_columns(pl.col('molecule_id').cast(pl.Float32))
+    results = pl.from_pandas(pd.DataFrame({
+        'molecule_id': molecule_ids,
+        'binds': scores[protein_name]
+    })).with_columns(pl.col('molecule_id').cast(pl.Float32))
     
-#     inputs = pl.read_parquet(f'out/test/test-{protein_name}-idsonly.parquet').with_columns(pl.col('molecule_id').cast(pl.Float32))
-#     inputs = inputs.join(results, on = 'molecule_id', how = 'left')
-#     if inputs.null_count()['binds'][0] > 0:
-#         raise Exception(f'{inputs.null_count()["binds"][0]:,.0f} nulls after join.')        
+    inputs = pl.read_parquet(f'out/test/test-{protein_name}-idsonly.parquet').with_columns(pl.col('molecule_id').cast(pl.Float32))
+    inputs = inputs.join(results, on = 'molecule_id', how = 'left')
+    if inputs.null_count()['binds'][0] > 0:
+        raise Exception(f'{inputs.null_count()["binds"][0]:,.0f} nulls after join.')        
     
-#     inputs = inputs .drop('molecule_id')
+    inputs = inputs .drop('molecule_id')
 
-#     isubmission = inputs.select(['id', 'binds'])
-#     isubmission = isubmission.select(['id', 'binds'])
+    isubmission = inputs.select(['id', 'binds'])
+    isubmission = isubmission.select(['id', 'binds'])
 
-#     submission.append(isubmission.to_pandas())
+    submission.append(isubmission.to_pandas())
 
-#     del isubmission, inputs, results, protein_name
+    del isubmission, inputs, results, protein_name
 
-# dircreate('out/submit')
-# submission = pd.concat(submission).sort_values('id')
+dircreate('out/submit')
+submission = pd.concat(submission).sort_values('id')
 
-# if submission.shape[0] != 1674896:
-#     raise Exception(f'Submission must have 1674896 rows, found: {submission.shape[0]}')
+if submission.shape[0] != 1674896:
+    raise Exception(f'Submission must have 1674896 rows, found: {submission.shape[0]}')
 
-# submission.to_parquet(
-#     f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{run_name}-{pad0(int(expected_score*100))}.parquet', 
-#     index = False
-# )
+submission.to_parquet(
+    f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{run_name}-{pad0(int(expected_score*100))}.parquet', 
+    index = False
+)
 
