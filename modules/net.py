@@ -51,6 +51,10 @@ class MLP_multi(nn.Module):
         self.batchnorm1 = nn.BatchNorm1d(self.input_len)
         self.dropout1 = nn.Dropout(self.dropoutpct)
 
+        self.fc2 = nn.Linear(self.input_len, self.input_len)
+        self.batchnorm2 = nn.BatchNorm1d(self.input_len)
+        self.dropout2 = nn.Dropout(self.dropoutpct)
+
         self.fc3 = nn.Linear(self.input_len, 500)
         self.batchnorm3 = nn.BatchNorm1d(500)
         self.dropout3 = nn.Dropout(self.dropoutpct)
@@ -65,17 +69,26 @@ class MLP_multi(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        x = torch.flatten(x, 1) # flatten all dimensions except batch        
+
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+
         x = F.relu(self.fc1(x))
         x = self.batchnorm1(x)
-        x = self.dropout1(x)        
+        x = self.dropout1(x)
+
+        x = F.relu(self.fc2(x))
+        x = self.batchnorm2(x)
+        x = self.dropout2(x)
+
         x = F.relu(self.fc3(x))
         x = self.batchnorm3(x)
-        x = self.dropout3(x)        
+        x = self.dropout3(x)
+
         x = F.relu(self.fc4(x))
         x = self.batchnorm4(x)
-        x = self.dropout4(x)        
-        x = F.relu(self.fc5(x))        
+        x = self.dropout4(x)
+
+        x = F.relu(self.fc5(x))
         x = self.fc_fin(x)
         x = self.sigmoid(x)
         return {
@@ -105,7 +118,7 @@ def train(
             break
     
     if not optimizer:
-        optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
+        optimizer = optim.SGD(net.parameters(), lr=options['lr'], momentum=options['momentum'])
 
     if not criterion: 
         criterion1 = nn.BCELoss().to(idevice)

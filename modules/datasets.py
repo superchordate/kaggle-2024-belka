@@ -32,7 +32,7 @@ class Dataset_Mols(Dataset):
 
         idt = self.mols[idx]
 
-        iX = features(idt, self.blocks)
+        iX = features(idt, self.blocks, self.options)
 
         if not self.istest:
             
