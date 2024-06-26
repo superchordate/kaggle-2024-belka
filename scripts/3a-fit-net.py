@@ -9,21 +9,24 @@ from datetime import datetime
 import pandas as pd
 import polars as pl
 
-dircreate('out/net', fromscratch = True)
+#dircreate('out/net', fromscratch = True)
+
+useprior = True
 
 options = {
-    'epochs': 2,
+    'epochs': 5,
     'train_batch_size': 32,
     'lr': 0.001,
     'momentum': 0.99,
     'onehot': True,
-    'ecfp': False,
+    'ecfp': True,
     'dropout': 50,
-    'n_rows': 100*1000,
-    'print_batches': 500,
+    'n_rows': 5*1000*1000,
+    'print_batches': 5000,
 }
 
-run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
+#run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
+run_name = 'latest'
 
 # train model
 model_path = f'out/net/{run_name}.pt'
@@ -35,6 +38,15 @@ if not os.path.exists(model_path):
         save_folder = 'out/net/',
         save_name = f'{run_name}'
     )
+elif useprior:
+    net, labels, scores = train(
+        get_loader(indir = 'out/train/train/', options = options),
+        options = options,
+        print_batches = options['print_batches'],
+        save_folder = 'out/net/',
+        net = torch.jit.load(model_path).train(),
+        save_name = f'{run_name}'
+    )    
 else:
     net = torch.jit.load(model_path).eval()
 
