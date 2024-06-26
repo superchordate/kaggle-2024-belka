@@ -157,12 +157,9 @@ def features(dt, blocks, options):
         .join(blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner', suffix = '2') \
         .join(blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner', suffix = '3')
 
-    features = idt['ecfp_pca'].list.concat(
-        idt['ecfp_pca2'].list.concat(
-            idt['ecfp_pca3'].list.concat(
-                idt['onehot_pca'].list.concat(
-                    idt['onehot_pca2'].list.concat(
-                        idt['onehot_pca3']
-    )))))
+    features = idt['features'].list.concat(
+        idt['features2'].list.concat(
+            idt['features3']
+    ))
 
     return(np.vstack(features, casting = 'no'))

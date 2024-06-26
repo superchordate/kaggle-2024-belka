@@ -8,6 +8,7 @@ import os, torch
 from datetime import datetime
 import pandas as pd
 import polars as pl
+import numpy as np
 
 #dircreate('out/net', fromscratch = True)
 

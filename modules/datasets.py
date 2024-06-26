@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-import torch
+import torch, sys
 from modules.mols import features
 import numpy as np
 import polars as pl
@@ -16,25 +16,24 @@ class Dataset_Mols(Dataset):
             targets = targets.with_columns(pl.col('binds_BRD4').cast(pl.Float32))
             targets = targets.with_columns(pl.col('binds_HSA').cast(pl.Float32))
 
-        blocks = blocks.with_columns(pl.col('index').cast(pl.Int32)).select(['index', 'ecfp_pca', 'onehot_pca'])
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
-        
-        self.device = device
-        self.options = options    
-        self.mols = mols
-        self.blocks = blocks
-        self.targets = targets
 
-        # targets = [np.vstack(targets[x].cast(pl.Float32)) for x in ['binds_sEH', 'binds_BRD4', 'binds_HSA']]            
+        print('getting features')
+        self.features = torch.from_numpy(features(mols, blocks, options)).type(torch.float).to(self.device)
+        print(sys.getsizeof(object))
+
+        self.mol_ids = mols['molecule_id']
+        self.device = device
+        self.options = options
+        self.targets = targets
 
     def __len__(self):
         return self.mols.shape[0]
     
     def __getitem__(self, idx):
 
-        idt = self.mols[idx]
-
-        iX = features(idt, self.blocks, self.options)
+        # idt = self.mols[idx]
+        # iX = features(idt, self.blocks, self.options)
 
         if not self.istest:
             
@@ -50,7 +49,7 @@ class Dataset_Mols(Dataset):
             
             iy = {'sEH': [], 'BRD4': [], 'HSA': []}
     
-        return self.mols['molecule_id'][idx], torch.from_numpy(iX).type(torch.float).to(self.device), iy
+        return self.mol_ids[idx], self.features[idx], iy
             
 
 def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain = False):
@@ -71,9 +70,9 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
     # we must use the full blocks (not train/val) to have aligned indexes.
-    blockpath = 'out/' + ('test' if istest else 'train') + '/building_blocks.parquet'
+    blockpath = 'out/' + ('test' if istest else 'train') + '/building_blocks-features.parquet'
     print(f'blocks: {blockpath}')
-    blocks = pl.read_parquet(blockpath, columns = ['index', 'ecfp_pca', 'onehot_pca'])
+    blocks = pl.read_parquet(blockpath, columns = ['index', 'features'])
 
     if istest:
         targets = None
@@ -93,7 +92,7 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
             mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']), 
             blocks, targets, device, options
         ), 
-        batch_size=batch_size, shuffle = shuffle, num_workers = 0
+        batch_size = batch_size, shuffle = shuffle, num_workers = 0
     )
 
 # def get_loader_multi(indir):
