@@ -10,7 +10,7 @@ import pandas as pd
 import polars as pl
 import numpy as np
 
-dircreate('out/net', fromscratch = True)
+#dircreate('out/net', fromscratch = True)
 
 useprior = False
 
@@ -22,8 +22,8 @@ options = {
     'onehot': True,
     'ecfp': True,
     'dropout': 50,
-    'n_rows': 5*1000*1000,
-    'print_batches': 5*1000,
+    'n_rows': 4*1000*1000,
+    'print_batches': 1000,
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'

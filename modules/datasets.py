@@ -68,7 +68,7 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
 
     if (not submit) and (str(options['n_rows']) != 'all'):
         mols = mols.sample(options['n_rows'])
-    elif checktrain:
+    elif checktrain or isval:
         mols = mols.sample(100*1000)
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
