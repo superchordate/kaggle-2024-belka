@@ -45,7 +45,7 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
 # check val to get expected score.
 print('val')
 molecule_ids, labels, scores = run_val(
-    get_loader('out/train/val/', options = options), 
+    get_loader('out/train/val/', options = options, checktrain = True), 
     net
 )
 for protein_name in ['sEH', 'BRD4', 'HSA']:

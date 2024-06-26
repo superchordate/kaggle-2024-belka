@@ -153,6 +153,8 @@ def run_val(loader, net, print_batches = 2000):
 
     print(f'{len(loader)} batches')
 
+    net = net.eval()
+
     with torch.no_grad():
         scores = {'sEH': [], 'BRD4': [], 'HSA': []}
         labels = {'sEH': [], 'BRD4': [], 'HSA': []}

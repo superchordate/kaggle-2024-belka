@@ -63,7 +63,7 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
     if (not submit) and (str(options['n_rows']) != 'all'):
         mols = pl.read_parquet(molpath, columns = getcols, n_rows = options['n_rows'])
     elif checktrain:
-        mols = pl.read_parquet(molpath, columns = getcols, n_rows = 1000*1000)
+        mols = pl.read_parquet(molpath, columns = getcols, n_rows = 100*1000)
     else:
         mols = pl.read_parquet(molpath, columns = getcols)
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
@@ -75,11 +75,11 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
 
     if istest:
         targets = None
-        batch_size = 1000
+        batch_size = 5*1000
         shuffle = False
     elif isval:
         targets = mols.select(['binds_sEH', 'binds_BRD4', 'binds_HSA'])
-        batch_size = 1000
+        batch_size = 5*1000
         shuffle = False
     else:
         targets = mols.select(['binds_sEH', 'binds_BRD4', 'binds_HSA'])
