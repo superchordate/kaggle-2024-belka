@@ -22,8 +22,8 @@ def fixbuildingblocks(indir):
     idt = idt.with_columns(pl.col('index').cast(pl.Int32))
     idt = idt.select(['index', 'ecfp_pca', 'onehot_pca'])
     
-    iecfp_pca = np.array(np.vstack(idt['ecfp_pca']), dtype=np.float32)    
-    ionehot_pca = np.array(np.vstack(idt['onehot_pca']), dtype=np.float32)
+    iecfp_pca = np.array(np.round(np.vstack(idt['ecfp_pca']) * 100, 0), dtype=np.int8)
+    ionehot_pca = np.array(np.round(np.vstack(idt['onehot_pca']) * 100, 0), dtype=np.int8)
     
     idt = idt.with_columns(pl.Series('ecfp_pca', iecfp_pca))    
     idt = idt.with_columns(pl.Series('onehot_pca', ionehot_pca))
@@ -37,11 +37,11 @@ def fixbuildingblocks(indir):
     save1(ifeatures, f'out/{indir}/building_blocks-features-np.pkl')
 
 # mols
-fixmols('test')
-fixmols('test/test')
-fixmols('train')
-fixmols('train/train')
-fixmols('train/val')
+# fixmols('test')
+# fixmols('test/test')
+# fixmols('train')
+# fixmols('train/train')
+# fixmols('train/val')
 
 # building blocks.
 fixbuildingblocks('test')
@@ -64,4 +64,5 @@ for train_test in ['test', 'train']:
         idt.write_parquet(ifile)
         del ifile, idt, protein_name
     del train_test
+
 
