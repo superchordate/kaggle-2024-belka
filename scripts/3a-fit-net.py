@@ -57,7 +57,7 @@ molecule_ids, labels, scores = run_val(
     net
 )
 for protein_name in ['sEH', 'BRD4', 'HSA']:
-    print_results(labels[protein_name], scores[protein_name], metrics = ['gini'])
+    print_results(labels[protein_name], scores[protein_name], metrics = ['average_precision_score', 'gini'])
 
 # check val to get expected score.
 print('val')
@@ -66,7 +66,7 @@ molecule_ids, labels, scores = run_val(
     net
 )
 for protein_name in ['sEH', 'BRD4', 'HSA']:
-    print_results(labels[protein_name], scores[protein_name], metrics = ['gini'])
+    print_results(labels[protein_name], scores[protein_name], metrics = ['average_precision_score', 'gini'])
 
 # build out the solution and submission (val).
 solution = []
@@ -84,7 +84,7 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
 
     isolution = inputs.select(['id', 'binds_actual']).rename({'binds_actual': 'binds'})
     isolution = isolution.with_columns(pl.Series('protein_name', [protein_name]*isolution.shape[0]))
-    isolution = isolution.with_columns(pl.Series('split_group', [1]*isolution.shape[0]))
+    isolution = isolution.with_columns(pl.Series('split_group', np.random.choice(range(25), isolution.shape[0])))
     isolution = isolution.select(['id', 'protein_name', 'binds', 'split_group'])
 
     isubmission = inputs.select(['id', 'binds_predict']).rename({'binds_predict': 'binds'})
@@ -95,12 +95,13 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
 
     del isolution, isubmission, inputs, results, protein_name
 
-del molecule_ids, labels, scores
 solution = pd.concat(solution)
 submission = pd.concat(submission)
 
 expected_score = kaggle_score(solution, submission, "id")
 print(f'expected score: {expected_score :.2f}')
+
+del molecule_ids, labels, scores
 
 # run test to get the actual submission. 
 print('submit')
