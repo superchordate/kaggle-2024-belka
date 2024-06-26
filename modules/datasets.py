@@ -62,12 +62,13 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
     getcols = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']
     if not istest: getcols = getcols + ['binds_sEH', 'binds_BRD4', 'binds_HSA']
 
+    # always read the full file then sample it down. 
+    mols = pl.read_parquet(molpath, columns = getcols)
+
     if (not submit) and (str(options['n_rows']) != 'all'):
-        mols = pl.read_parquet(molpath, columns = getcols, n_rows = options['n_rows'])
+        mols = mols.sample(options['n_rows'])
     elif checktrain:
-        mols = pl.read_parquet(molpath, columns = getcols, n_rows = 100*1000)
-    else:
-        mols = pl.read_parquet(molpath, columns = getcols)
+        mols = mols.sample(100*1000)
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
     # we must use the full blocks (not train/val) to have aligned indexes.
