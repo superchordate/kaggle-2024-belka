@@ -10,9 +10,9 @@ import pandas as pd
 import polars as pl
 import numpy as np
 
-#dircreate('out/net', fromscratch = True)
+dircreate('out/net', fromscratch = True)
 
-useprior = True
+useprior = False
 
 options = {
     'epochs': 5,
@@ -22,7 +22,7 @@ options = {
     'onehot': True,
     'ecfp': True,
     'dropout': 50,
-    'n_rows': 'all',
+    'n_rows': 5*1000*1000,
     'print_batches': 5*1000,
 }
 

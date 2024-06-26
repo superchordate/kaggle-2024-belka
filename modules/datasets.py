@@ -19,16 +19,17 @@ class Dataset_Mols(Dataset):
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
 
         print('getting features')
+        self.device = device
         self.features = torch.from_numpy(features(mols, blocks, options)).type(torch.float).to(self.device)
         print(sys.getsizeof(object))
 
         self.mol_ids = mols['molecule_id']
-        self.device = device
         self.options = options
         self.targets = targets
+        self.len = mols.shape[0]
 
     def __len__(self):
-        return self.mols.shape[0]
+        return self.len
     
     def __getitem__(self, idx):
 

@@ -114,7 +114,7 @@ def train(
         print('starting from clean network')
         for i, data in enumerate(loader, 0):
             molecule_ids, iX, iy = data
-            net = MLP_multi(options = options, input_len = len(iX[0][0])).to(idevice)
+            net = MLP_multi(options = options, input_len = len(iX[0])).to(idevice)
             del i, data, molecule_ids, iX, iy
             break
     else:
