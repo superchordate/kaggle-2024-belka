@@ -20,8 +20,9 @@ class Dataset_Mols(Dataset):
 
         print('getting features')
         self.device = device
-        self.features = torch.from_numpy(features(mols, blocks, options)).type(torch.float).to(self.device)
-        print(sys.getsizeof(object))
+        self.features = features(mols, blocks, options)
+        print(f'{self.features.bytes/1024/1024/1024:.2f} GB')
+        self.features = torch.from_numpy(self.features).type(torch.float).to(self.device)
 
         self.mol_ids = mols['molecule_id']
         self.options = options
