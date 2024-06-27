@@ -10,24 +10,22 @@ import pandas as pd
 import polars as pl
 import numpy as np
 
-#dircreate('out/net', fromscratch = True)
+dircreate('out/net', fromscratch = True)
 
 useprior = False
 
 options = {
-    'epochs': 5,
+    'epochs': 3,
     'train_batch_size': 100,
     'lr': 0.001,
     'momentum': 0.9,
-    'onehot': True,
-    'ecfp': True,
     'dropout': 50,
-    'n_rows': 4*1000*1000,
+    'n_rows': 1*1000*1000,
     'print_batches': 1000,
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
-run_name = 'latest'
+run_name = 'newfeat-3-1M'
 
 # train model
 model_path = f'out/net/{run_name}.pt'

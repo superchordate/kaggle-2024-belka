@@ -1,13 +1,7 @@
 # create train/validation split for testing.
 
-import os
-import pyarrow as pa
-import pyarrow.parquet as pq
-import pyarrow.compute as pc
-import numpy as np
 from sklearn.model_selection import train_test_split
-from modules.utils import dircreate, save1, pad0, write_parquet_from_pyarrow
-from modules.mols import get_blocks
+from modules.utils import dircreate
 import polars as pl
  
 dircreate('out/train/train')
@@ -16,12 +10,12 @@ dircreate('out/test/test')
 
 # split blocks to train and val.
 train_blocks, val_blocks = train_test_split(
-    pl.read_parquet('out/train/building_blocks.parquet').to_pandas()[['index', 'ecfp_pca', 'onehot_pca']], 
-    test_size = 0.35,
+    pl.read_parquet('out/train/blocks/blocks-4-min.parquet').to_pandas(), 
+    test_size = 0.10,
     random_state = 1114 
 )
-train_blocks.to_parquet('out/train/train/building_blocks.parquet')
-val_blocks.to_parquet('out/train/val/building_blocks.parquet')
+train_blocks.to_parquet('out/train/train/blocks-min.parquet')
+val_blocks.to_parquet('out/train/val/blocks-min.parquet')
 
 # save versions of the data containing only the selected blocks for train/val.
 mols = pl.read_parquet('out/train/mols.parquet')

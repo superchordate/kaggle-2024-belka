@@ -11,37 +11,28 @@ def fixmols(indir):
     idt = pl.read_parquet(ifile)
     idt = idt.with_columns(pl.col('molecule_id').cast(pl.Int32))
     idt.write_parquet(ifile)
+
+# mols
+fixmols('test')
+fixmols('test/test')
+fixmols('train')
+fixmols('train/train')
+fixmols('train/val')
     
 def fixbuildingblocks(indir):
     
     print(f'buildingblocks: {indir}')
     
-    ifile = f'out/{indir}/building_blocks.parquet'
+    ifile = f'out/{indir}/blocks/blocks-4-min.parquet'
     
     idt = pl.read_parquet(ifile)
     idt = idt.with_columns(pl.col('index').cast(pl.Int32))
-    idt = idt.select(['index', 'ecfp_pca', 'onehot_pca'])
     
-    iecfp_pca = np.array(np.round(np.vstack(idt['ecfp_pca']) * 100, 0), dtype=np.int8)
-    ionehot_pca = np.array(np.round(np.vstack(idt['onehot_pca']) * 100, 0), dtype=np.int8)
+    ifeatures = np.array(np.round(np.vstack(idt['features_pca']) * 1000, 0), dtype=np.int8)    
+    idt = idt.with_columns(pl.Series('features_pca', ifeatures))
     
-    idt = idt.with_columns(pl.Series('ecfp_pca', iecfp_pca))    
-    idt = idt.with_columns(pl.Series('onehot_pca', ionehot_pca))
-    idt.write_parquet(f'out/{indir}/building_blocks-min.parquet')
-    
-    ifeatures = np.concatenate([iecfp_pca, ionehot_pca], axis = 1)
-    idt = idt.with_columns(pl.Series('features', ifeatures))
-    idt = idt.select('index', 'features')
-    
-    idt.write_parquet(f'out/{indir}/building_blocks-features.parquet')  
-    save1(ifeatures, f'out/{indir}/building_blocks-features-np.pkl')
-
-# mols
-# fixmols('test')
-# fixmols('test/test')
-# fixmols('train')
-# fixmols('train/train')
-# fixmols('train/val')
+    idt.write_parquet(f'out/{indir}/blocks/blocks-4-min.parquet')    
+    save1(ifeatures, f'out/{indir}/blocks/blocks-features-np.pkl')
 
 # building blocks.
 fixbuildingblocks('test')
