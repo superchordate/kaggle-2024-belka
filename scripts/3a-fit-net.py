@@ -25,7 +25,7 @@ options = {
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
-run_name = 'newfeat-3-1M'
+run_name = 'newfeat-3-1M-simplenet'
 
 # train model
 model_path = f'out/net/{run_name}.pt'

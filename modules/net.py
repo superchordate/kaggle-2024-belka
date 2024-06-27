@@ -46,13 +46,13 @@ class MLP_multi(nn.Module):
         self.input_len = input_len
         print(f'input_len: {input_len}')
 
-        self.fc1 = nn.Linear(self.input_len, self.input_len * 3)
-        self.batchnorm1 = nn.BatchNorm1d(self.input_len * 3)
+        self.fc1 = nn.Linear(self.input_len, self.input_len)
+        self.batchnorm1 = nn.BatchNorm1d(self.input_len)
         self.dropout1 = nn.Dropout(self.dropoutpct)
 
-        self.fc2 = nn.Linear(self.input_len * 3, self.input_len)
-        self.batchnorm2 = nn.BatchNorm1d(self.input_len)
-        self.dropout2 = nn.Dropout(self.dropoutpct)
+        # self.fc2 = nn.Linear(self.input_len, self.input_len)
+        # self.batchnorm2 = nn.BatchNorm1d(self.input_len)
+        # self.dropout2 = nn.Dropout(self.dropoutpct)
 
         self.fc3 = nn.Linear(self.input_len, 500)
         self.batchnorm3 = nn.BatchNorm1d(500)
@@ -75,8 +75,8 @@ class MLP_multi(nn.Module):
         x = self.batchnorm1(x)
         #x = self.dropout1(x)
 
-        x = F.relu(self.fc2(x))
-        x = self.batchnorm2(x)
+        # x = F.relu(self.fc2(x))
+        # x = self.batchnorm2(x)
         #x = self.dropout2(x)
 
         x = F.relu(self.fc3(x))
