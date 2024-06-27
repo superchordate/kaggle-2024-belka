@@ -18,10 +18,9 @@ class Dataset_Mols(Dataset):
 
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
 
-        print('getting features')
         self.device = device
         self.features = features(mols, blocks, options)
-        print(f'{sys.getsizeof(self.features)/1024/1024/1024:.2f} GB')
+        print(f'features size: {sys.getsizeof(self.features)/1024/1024/1024:.2f} GB')
         self.features = torch.from_numpy(self.features).type(torch.float).to(self.device)
 
         self.mol_ids = mols['molecule_id']
