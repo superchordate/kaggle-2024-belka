@@ -20,7 +20,8 @@ for train_test in ['test', 'train']:
     filename = f'out/{train_test}/blocks/blocks-1-smiles.parquet'
     if fileexists(filename):
         blocks[train_test] = pl.read_parquet(filename)
-        continue        
+        del filename
+        continue
 
     f = pq.ParquetFile(f'data/{train_test}.parquet')
     batch_size = 10000000 if train_test == 'train' else f.metadata.num_rows
@@ -29,18 +30,19 @@ for train_test in ['test', 'train']:
     building_blocks = [[],[],[]]
     for i in f.iter_batches(batch_size = batch_size):
         ct += 1
+        print(f'batch {ct}')
         building_blocks[0] = np.unique(np.concatenate([building_blocks[0], i['buildingblock1_smiles']]))
         building_blocks[1] = np.unique(np.concatenate([building_blocks[1], i['buildingblock2_smiles']]))
         building_blocks[2] = np.unique(np.concatenate([building_blocks[2], i['buildingblock3_smiles']]))
-        print(f'batch {ct} {np.sum([len(x) for x in building_blocks]):.0f} unique blocks ')
+        # print(f'batch {ct} {np.sum([len(x) for x in building_blocks]):.0f} unique blocks')
     
     building_blocks = pl.DataFrame({'smiles': np.unique(np.concatenate(building_blocks))}).with_row_index()
-    building_blocks = building_blocks.with_columns(pl.col('index').cast(pl.Int32))
+    building_blocks = building_blocks.with_columns(pl.col('index').cast(pl.UInt8))
     
     building_blocks.write_parquet(filename)
     blocks[train_test] = building_blocks
     
-    del train_test, f, i, building_blocks
+    del train_test, f, i, building_blocks, ct, filename, batch_size
 
 # run preprocessing on full data.
 blocks['train'] = blocks['train'].with_columns(pl.Series('train_test', ['train']*blocks['train'].shape[0]))

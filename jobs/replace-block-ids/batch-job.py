@@ -9,24 +9,25 @@ os.system(f'gsutil cp gs://kaggle-417721/batch-data.zip batch-data.zip && unzip 
 
 train_test = 'train'
 
-blocks = pl.read_parquet(f'batch-data/building_blocks.parquet')
-blocks = blocks.select(['index', 'smile'])
+blocks = pl.read_parquet(f'batch-data/blocks-1-smiles.parquet')
+blocks = blocks.select(['index', 'smiles'])
 
 for protein_name in ['sEH', 'BRD4', 'HSA']:  
     
     filename = f'{train_test}-{protein_name}-wids.parquet'
     
     print(f'replace block ids at: {filename}')
-    dt = pl.read_parquet(f'batch-data/{train_test}-{protein_name}.parquet')
+    dt = pl.read_parquet(f'batch-data/{filename}')
+    dt = dt.with_columns(pl.col('id').cast(pl.Int32))
     
     # joins in pyarrow will be faster, start there.
-    dt = dt.join(blocks, left_on = 'buildingblock1_smiles', right_on = 'smile', how = 'inner')
+    dt = dt.join(blocks, left_on = 'buildingblock1_smiles', right_on = 'smiles', how = 'inner')
     dt = dt.rename({'index': 'buildingblock1_index'}).drop('buildingblock1_smiles')
     
-    dt = dt.join(blocks, left_on = 'buildingblock2_smiles', right_on = 'smile', how = 'inner')
+    dt = dt.join(blocks, left_on = 'buildingblock2_smiles', right_on = 'smiles', how = 'inner')
     dt = dt.rename({'index': 'buildingblock2_index'}).drop('buildingblock2_smiles')
     
-    dt = dt.join(blocks, left_on = 'buildingblock3_smiles', right_on = 'smile', how = 'inner')
+    dt = dt.join(blocks, left_on = 'buildingblock3_smiles', right_on = 'smiles', how = 'inner')
     dt = dt.rename({'index': 'buildingblock3_index'}).drop('buildingblock3_smiles')
 
     dt = dt.sort('id')
@@ -38,5 +39,5 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
     dt.write_parquet(filename)    
     os.system(f'gsutil cp {filename} gs://kaggle-417721/{filename}')
     
-    del dt, protein_name
+    del dt, protein_name, filename
     gc.collect()

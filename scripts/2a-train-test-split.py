@@ -10,12 +10,12 @@ dircreate('out/test/test')
 
 # split blocks to train and val.
 train_blocks, val_blocks = train_test_split(
-    pl.read_parquet('out/train/blocks/blocks-4-min.parquet').to_pandas(), 
+    pl.read_parquet('out/train/blocks/blocks-3-pca.parquet').to_pandas(), 
     test_size = 0.10,
     random_state = 1114 
 )
-train_blocks.to_parquet('out/train/train/blocks-min.parquet')
-val_blocks.to_parquet('out/train/val/blocks-min.parquet')
+train_blocks.to_parquet('out/train/train/blocks.parquet')
+val_blocks.to_parquet('out/train/val/blocks.parquet')
 
 # save versions of the data containing only the selected blocks for train/val.
 mols = pl.read_parquet('out/train/mols.parquet')

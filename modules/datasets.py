@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
-import torch, sys
+import torch, sys, math
 from modules.features import features
 import numpy as np
 import polars as pl
@@ -10,40 +10,70 @@ class Dataset_Mols(Dataset):
     def __init__(self, mols, blocks, targets = None, device = 'cpu', options = {}):
         
         self.istest = not isinstance(targets, pl.DataFrame)
+        self.device = device
+        self.options = options
         
-        if not self.istest :
-            targets = targets.with_columns(pl.col('binds_sEH').cast(pl.Float32))
-            targets = targets.with_columns(pl.col('binds_BRD4').cast(pl.Float32))
-            targets = targets.with_columns(pl.col('binds_HSA').cast(pl.Float32))
+        if not self.istest:
+
+            # to rebalance without adding more data, we create a one-to-many mapping of idx to molecule_id
+            if 'rebalanceto' in options:
+
+                # duplicate molecule ids that bind, to get the desired percentage.
+                index_map = []
+                for protein_name in ['sEH', 'BRD4', 'HSA']:
+
+                    targets_binds = targets.filter(pl.col(f'binds_{protein_name}'))['index', f'binds_{protein_name}']
+                    current_pct = targets_binds.shape[0] / targets.shape[0]
+                    duplicate_count = math.ceil(options['rebalanceto'] / current_pct)
+                    print(f'{protein_name} current: {current_pct:.2f}, repeating {duplicate_count}x to reach {options["rebalanceto"]:.2f}')
+                    
+                    indexes = []
+                    for i in range(duplicate_count):
+                        indexes.append(targets_binds['index'])
+                    indexes = np.concatenate(indexes)
+                    index_map.append(indexes)
+                    
+                index_map = np.concatenate(index_map) 
+
+                # add the ids that don't bind.
+                index_map = np.append(index_map, np.array(targets.filter(pl.col('index').is_in(index_map).not_())['index']))
+
+            else:
+                index_map = np.array(range(targets.shape[0]))
+
+            self.index_map = np.array(targets['index'])
+            self.index_map = [int(x) for x in self.index_map] # must be int for selection.
+
+            targets_torch = {}
+            for protein_name in ['sEH', 'BRD4', 'HSA']:
+                targets_torch[protein_name] = np.array(targets[f'binds_{protein_name}'].cast(pl.Float32))
+                targets_torch[protein_name] = torch.from_numpy(targets_torch[protein_name]).float()
+                targets_torch[protein_name] = torch.reshape(targets_torch[protein_name], (-1, 1))
+                targets_torch[protein_name] = targets_torch[protein_name].to(self.device)
 
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
 
-        self.device = device
         self.features = features(mols, blocks, options)
         print(f'features size: {sys.getsizeof(self.features)/1024/1024/1024:.2f} GB')
-        self.features = torch.from_numpy(self.features).type(torch.float).to(self.device)
+        # self.features = torch.from_numpy(self.features).type(torch.float).to(self.device)
+        self.features = torch.from_numpy(self.features).float().to(self.device)
 
         self.mol_ids = mols['molecule_id']
-        self.options = options
-        self.targets = targets
-        self.len = mols.shape[0]
+        self.targets = targets_torch
 
     def __len__(self):
-        return self.len
+        return len(self.index_map)
     
     def __getitem__(self, idx):
 
-        # idt = self.mols[idx]
-        # iX = features(idt, self.blocks, self.options)
+        idx = self.index_map[idx]
 
         if not self.istest:
-            
-            itargets = self.targets[idx]
         
             iy = {
-                'sEH': torch.from_numpy(itargets['binds_sEH'].to_numpy()).to(self.device),
-                'BRD4': torch.from_numpy(itargets['binds_BRD4'].to_numpy()).to(self.device),
-                'HSA': torch.from_numpy(itargets['binds_HSA'].to_numpy()).to(self.device)
+                'sEH': self.targets['sEH'][idx],
+                'BRD4': self.targets['BRD4'][idx],
+                'HSA': self.targets['HSA'][idx]
             }
         
         else:
@@ -69,11 +99,13 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
         mols = mols.sample(100*1000)            
     elif (not submit) and (str(options['n_rows']) != 'all'):
         mols = mols.sample(options['n_rows'])
+
+    mols = mols.with_row_index()
     
     print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
     # we must use the full blocks (not train/val) to have aligned indexes.
-    blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-4-min.parquet'
+    blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
     print(f'blocks: {blockpath}')
     blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
 
@@ -82,11 +114,11 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
         batch_size = 5*1000
         shuffle = False
     elif isval:
-        targets = mols.select(['binds_sEH', 'binds_BRD4', 'binds_HSA'])
+        targets = mols.select(['index', 'binds_sEH', 'binds_BRD4', 'binds_HSA'])
         batch_size = 5*1000
         shuffle = False
     else:
-        targets = mols.select(['binds_sEH', 'binds_BRD4', 'binds_HSA'])
+        targets = mols.select(['index', 'binds_sEH', 'binds_BRD4', 'binds_HSA'])
         batch_size = options['train_batch_size']
         shuffle = True
     

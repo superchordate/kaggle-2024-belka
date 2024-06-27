@@ -20,12 +20,13 @@ options = {
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 50,
-    'n_rows': 1*1000*1000,
+    'rebalanceto': 0.1,
+    'n_rows': 0.5*1000*1000,
     'print_batches': 1000,
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
-run_name = 'newfeat-3-1M-simplenet'
+run_name = 'newfeat-3-1M-simplenet-rebalance'
 
 # train model
 model_path = f'out/net/{run_name}.pt'
@@ -102,7 +103,7 @@ print(f'expected score: {expected_score :.2f}')
 
 del molecule_ids, labels, scores
 
-# run test to get the actual submission. 
+# run test to get the actual submission.
 print('submit')
 molecule_ids, labels, scores = run_val(
     get_loader('out/test/test/', options = options, submit = True), 

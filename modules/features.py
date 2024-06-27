@@ -84,6 +84,7 @@ def blocks_add_descriptors(blocks):
 
 def features(dt, blocks, options):
 
+    blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
     idt = dt.join(blocks, left_on = 'buildingblock1_index', right_on = 'index', how = 'inner', suffix = '1') \
         .join(blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner', suffix = '2') \
         .join(blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner', suffix = '3')

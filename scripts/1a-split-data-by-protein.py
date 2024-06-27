@@ -16,6 +16,8 @@ for train_test in ['test', 'train']:
             print(f'create: out/{train_test}/{train_test}-{protein_name}.parquet')            
             columns = ['id', 'buildingblock1_smiles', 'buildingblock2_smiles', 'buildingblock3_smiles', 'molecule_smiles']
             if train_test == 'train': columns.append('binds')
+            
+            # use pyarrow to implement filtering during the read.
             pq.write_table(pq.read_table(
                 source = f'data/{train_test}.parquet',
                 columns = columns,
