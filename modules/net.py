@@ -156,7 +156,7 @@ def train(
                 scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
 
             if (i % print_batches == 0) and (i != 0):
-                print(f'batch {i}, loss: {loss:.4f} {(time.time() - start_time)/60:.2f} mins')
+                print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
                 start_time = time.time()
                 loss = 0.0
                 save_model(net, save_folder, save_name, verbose = False)
