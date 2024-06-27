@@ -1,4 +1,6 @@
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler, Normalizer
+from sklearn.pipeline import Pipeline
 import numpy as np
 
 def get_pca(X, info_cutoff = 0.95, col_increment = None, verbose = 1, from_full = True):
@@ -7,6 +9,14 @@ def get_pca(X, info_cutoff = 0.95, col_increment = None, verbose = 1, from_full 
     nrows = len(X)
     if col_increment == None: col_increment = int(.01*ncols) if ncols > 100 else 1
     if verbose > 0: print(f'running PCA on {ncols} columns {nrows} rows, col_increment: {col_increment}')
+
+     # scale and normalize prior to PCA.
+    pipe = Pipeline([
+        ('scale', StandardScaler()),
+        ('normalize', Normalizer())
+    ]).fit(X)
+
+    X = pipe.transform(X)
 
     if from_full:
 
@@ -50,6 +60,12 @@ def get_pca(X, info_cutoff = 0.95, col_increment = None, verbose = 1, from_full 
         'ending cols': n_components, 
         'explained': round(np.sum(pca.explained_variance_ratio_), 2)
     })
+
+    pipe = Pipeline([
+        ('scale', pipe['scale']),
+        ('normalize', pipe['normalize']),
+        ('pca', pca)
+    ])
     
-    return pca
+    return pipe
 

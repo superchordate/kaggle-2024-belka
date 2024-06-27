@@ -1,6 +1,6 @@
 ## Installation
 
-* Instally Python [3.11.8](https://www.python.org/ftp/python/3.11.8/python-3.11.8-amd64.exe). This is the [latest version of Python that works with Pytorch](https://pytorch.org/get-started/locally/)
+* Instally Python `3.8.4`
   - Choose option "Add python.exe to PATH"
   - Restart your computer after the install is finished. 
   - Take note of the location of your Python installation. For me it was `C:\Users\Bryce\AppData\Local\Programs\Python\Python311\`. Replace my path with yours below.
@@ -16,6 +16,12 @@ _You don't need to do this, but for my records, here is how the initial install 
 pip install 'polars[numpy,pandas,pyarrow,timezone]'
 pip freeze > requirements.txt
 python -m venv .venv  -p "C:\Users\Bryce\AppData\Local\Programs\Python\Python311\python.exe"
+```
+
+* Install libaries from github.
+```
+pip install C:/Users/super/Documents/kaggle/mol2vec
+pip install git+https://github.com/MolecularAI/pysmilesutils.git
 ```
 
 ## Folders
