@@ -42,7 +42,6 @@ class Dataset_Mols(Dataset):
                 index_map = np.array(range(targets.shape[0]))
 
             self.index_map = np.array(targets['index'])
-            self.index_map = [int(x) for x in self.index_map] # must be int for selection.
 
             targets_torch = {}
             for protein_name in ['sEH', 'BRD4', 'HSA']:
@@ -50,6 +49,11 @@ class Dataset_Mols(Dataset):
                 targets_torch[protein_name] = torch.from_numpy(targets_torch[protein_name]).float()
                 targets_torch[protein_name] = torch.reshape(targets_torch[protein_name], (-1, 1))
                 targets_torch[protein_name] = targets_torch[protein_name].to(self.device)
+        else:
+            
+            self.index_map = np.array(range(mols.shape[0]))
+            
+        self.index_map = [int(x) for x in self.index_map] # must be int for selection.
 
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
 
@@ -59,7 +63,7 @@ class Dataset_Mols(Dataset):
         self.features = torch.from_numpy(self.features).float().to(self.device)
 
         self.mol_ids = mols['molecule_id']
-        self.targets = targets_torch
+        if not self.istest: self.targets = targets_torch
 
     def __len__(self):
         return len(self.index_map)
@@ -92,7 +96,7 @@ def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain 
     getcols = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']
     if not istest: getcols = getcols + ['binds_sEH', 'binds_BRD4', 'binds_HSA']
 
-    # always read the full file then sample it down. 
+    # always read the full file then sample it down.
     mols = pl.read_parquet(molpath, columns = getcols)
 
     if checktrain or isval:
