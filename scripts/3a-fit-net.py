@@ -10,9 +10,10 @@ import pandas as pd
 import polars as pl
 import numpy as np
 
-dircreate('out/net', fromscratch = True)
+#dircreate('out/net', fromscratch = True)
 
 useprior = False
+justsubmit = False
 
 options = {
     'epochs': 3,
@@ -21,26 +22,26 @@ options = {
     'momentum': 0.9,
     'dropout': 50,
     'rebalanceto': 0.1,
-    'n_rows': 0.5*1000*1000,
+    'n_rows': 'all',
     'print_batches': 1000,
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
-run_name = 'newfeat-3-1M-simplenet-rebalance'
+run_name = 'smallnet-allrows-2e'
 
 # train model
 model_path = f'out/net/{run_name}.pt'
-if not os.path.exists(model_path):
+if not os.path.exists(model_path) and not justsubmit:
     net, labels, scores = train(
-        get_loader(indir = 'out/train/train/', options = options),
+        indir = 'out/train/train/',
         options = options,
         print_batches = options['print_batches'],
         save_folder = 'out/net/',
         save_name = f'{run_name}'
     )
-elif useprior:
+elif useprior and not justsubmit:
     net, labels, scores = train(
-        get_loader(indir = 'out/train/train/', options = options),
+        indir = 'out/train/train/',
         options = options,
         print_batches = options['print_batches'],
         save_folder = 'out/net/',
@@ -50,58 +51,60 @@ elif useprior:
 else:
     net = torch.jit.load(model_path).eval()
 
-# get metrics for train so we can see if we are over-fitting.
-print('measure train accuracy')
-molecule_ids, labels, scores = run_val(
-    get_loader(indir = 'out/train/train/', options = options, checktrain = True), 
-    net
-)
-for protein_name in ['sEH', 'BRD4', 'HSA']:
-    print_results(labels[protein_name], scores[protein_name], metrics = ['average_precision_score', 'gini'])
-
-# check val to get expected score.
-print('val')
-molecule_ids, labels, scores = run_val(
-    get_loader('out/train/val/', options = options, checktrain = True), 
-    net
-)
-for protein_name in ['sEH', 'BRD4', 'HSA']:
-    print_results(labels[protein_name], scores[protein_name], metrics = ['average_precision_score', 'gini'])
-
-# build out the solution and submission (val).
-solution = []
-submission = []
-for protein_name in ['sEH', 'BRD4', 'HSA']:
-
-    results = pl.from_pandas(pd.DataFrame({
-        'molecule_id': molecule_ids,
-        'binds_predict': scores[protein_name],
-        'binds_actual': labels[protein_name]
-    })).with_columns(pl.col('molecule_id').cast(pl.Float32))
+# if not justsubmit:
     
-    inputs = pl.read_parquet(f'out/train/train-{protein_name}-idsonly.parquet').with_columns(pl.col('molecule_id').cast(pl.Float32))
-    inputs = inputs.join(results, on = 'molecule_id', how = 'inner').drop('molecule_id')
+    # get metrics for train so we can see if we are over-fitting.
+    # print('measure train accuracy')
+    # molecule_ids, labels, scores = run_val(
+    #     get_loader(indir = 'out/train/train/', options = options, checktrain = True), 
+    #     net
+    # )
+    # for protein_name in ['sEH', 'BRD4', 'HSA']:
+    #     print_results(labels[protein_name], scores[protein_name], metrics = ['average_precision_score', 'gini'])
 
-    isolution = inputs.select(['id', 'binds_actual']).rename({'binds_actual': 'binds'})
-    isolution = isolution.with_columns(pl.Series('protein_name', [protein_name]*isolution.shape[0]))
-    isolution = isolution.with_columns(pl.Series('split_group', np.random.choice(range(25), isolution.shape[0])))
-    isolution = isolution.select(['id', 'protein_name', 'binds', 'split_group'])
+    # # check val to get expected score.
+    # print('val')
+    # molecule_ids, labels, scores = run_val(
+    #     get_loader('out/train/val/', options = options, checktrain = True), 
+    #     net
+    # )
+    # for protein_name in ['sEH', 'BRD4', 'HSA']:
+    #     print_results(labels[protein_name], scores[protein_name], metrics = ['average_precision_score', 'gini'])
 
-    isubmission = inputs.select(['id', 'binds_predict']).rename({'binds_predict': 'binds'})
-    isubmission = isubmission.select(['id', 'binds'])
-
-    solution.append(isolution.to_pandas())
-    submission.append(isubmission.to_pandas())
-
-    del isolution, isubmission, inputs, results, protein_name
-
-solution = pd.concat(solution)
-submission = pd.concat(submission)
-
-expected_score = kaggle_score(solution, submission, "id")
-print(f'expected score: {expected_score :.2f}')
-
-del molecule_ids, labels, scores
+    # # build out the solution and submission (val).
+    # solution = []
+    # submission = []
+    # for protein_name in ['sEH', 'BRD4', 'HSA']:
+    
+    #     results = pl.from_pandas(pd.DataFrame({
+    #         'molecule_id': molecule_ids,
+    #         'binds_predict': scores[protein_name],
+    #         'binds_actual': labels[protein_name]
+    #     })).with_columns(pl.col('molecule_id').cast(pl.Float32))
+        
+    #     inputs = pl.read_parquet(f'out/train/train-{protein_name}-idsonly.parquet').with_columns(pl.col('molecule_id').cast(pl.Float32))
+    #     inputs = inputs.join(results, on = 'molecule_id', how = 'inner').drop('molecule_id')
+    
+    #     isolution = inputs.select(['id', 'binds_actual']).rename({'binds_actual': 'binds'})
+    #     isolution = isolution.with_columns(pl.Series('protein_name', [protein_name]*isolution.shape[0]))
+    #     isolution = isolution.with_columns(pl.Series('split_group', np.random.choice(range(25), isolution.shape[0])))
+    #     isolution = isolution.select(['id', 'protein_name', 'binds', 'split_group'])
+    
+    #     isubmission = inputs.select(['id', 'binds_predict']).rename({'binds_predict': 'binds'})
+    #     isubmission = isubmission.select(['id', 'binds'])
+    
+    #     solution.append(isolution.to_pandas())
+    #     submission.append(isubmission.to_pandas())
+    
+    #     del isolution, isubmission, inputs, results, protein_name
+    
+    # solution = pd.concat(solution)
+    # submission = pd.concat(submission)
+    
+    # expected_score = kaggle_score(solution, submission, "id")
+    # print(f'expected score: {expected_score :.2f}')
+    
+    # del molecule_ids, labels, scores
 
 # run test to get the actual submission.
 print('submit')
@@ -139,7 +142,7 @@ if submission.shape[0] != 1674896:
     raise Exception(f'Submission must have 1674896 rows, found: {submission.shape[0]}')
 
 submission.to_parquet(
-    f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{run_name}-{pad0(int(expected_score*100))}.parquet', 
+    f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{run_name}.parquet', 
     index = False
 )
 

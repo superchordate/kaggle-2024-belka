@@ -3,7 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import polars as pl
 from modules.utils import device, gcp
+from modules.features import features
+from modules.datasets import get_loader
 
 class MLP(nn.Module):
     def __init__(self, input_len = 1024):
@@ -46,15 +49,15 @@ class MLP_multi(nn.Module):
         self.input_len = input_len
         print(f'input_len: {input_len}')
 
-        self.fc1 = nn.Linear(self.input_len, self.input_len)
-        self.batchnorm1 = nn.BatchNorm1d(self.input_len)
+        self.fc1 = nn.Linear(self.input_len, 1000)
+        self.batchnorm1 = nn.BatchNorm1d(1000)
         self.dropout1 = nn.Dropout(self.dropoutpct)
 
         # self.fc2 = nn.Linear(self.input_len, self.input_len)
         # self.batchnorm2 = nn.BatchNorm1d(self.input_len)
         # self.dropout2 = nn.Dropout(self.dropoutpct)
 
-        self.fc3 = nn.Linear(self.input_len, 500)
+        self.fc3 = nn.Linear(1000, 500)
         self.batchnorm3 = nn.BatchNorm1d(500)
         self.dropout3 = nn.Dropout(self.dropoutpct)
 
@@ -97,7 +100,7 @@ class MLP_multi(nn.Module):
         }
     
 def train(
-        loader, 
+        indir, 
         save_folder,
         save_name,        
         options,
@@ -108,14 +111,22 @@ def train(
         criterion = None
 ):  
     idevice = device()
+
+    # load mols and blocks.
+    molpath = f'{indir}/mols.parquet'
+    print(f'loading {molpath}')
+    mols = pl.read_parquet(
+        molpath, 
+        columns = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index', 'binds_sEH', 'binds_BRD4', 'binds_HSA']
+    )
+    blocks = pl.read_parquet('out/train/blocks/blocks-3-pca.parquet', columns = ['index', 'features_pca'])
+
+    # get the network, optimizer, and criterion.
     if not net:
-        # run one loader loop to get the input size.
         print('starting from clean network')
-        for i, data in enumerate(loader, 0):
-            molecule_ids, iX, iy = data
-            net = MLP_multi(options = options, input_len = len(iX[0])).to(idevice)
-            del i, data, molecule_ids, iX, iy
-            break
+        input_len = len(features(mols[0,], blocks, options)[0])
+        net = MLP_multi(options = options, input_len = input_len).to(idevice)
+        del input_len
     else:
         print('using existing network')
     
@@ -127,44 +138,61 @@ def train(
         criterion2 = nn.BCELoss().to(idevice)
         criterion3 = nn.BCELoss().to(idevice)
         #criterion = nn.CrossEntropyLoss().to(idevice)
+
+    # the data is too large to fit in memory, so we need to load it in batches.
+    if options['n_rows'] == 'all':
+        num_splits = 30
+        mols = mols.with_columns(pl.Series('group', np.random.choice(range(num_splits), mols.shape[0])))
+        mols = mols.partition_by('group', include_key = False)
+        print(f'split mols to {num_splits} random splits for processing.')
+    else:
+        mols = [mols.sample(options['n_rows'])]
+        print(f'sampled to {options["n_rows"]/1000/1000:.1f}M rows.')
     
     print(f'training {save_name}')
     print(f'{len(loader):,.0f} batches')
     for epoch in range(options['epochs']):
-        start_time = time.time()
-        print(f'epoch {epoch + 1}')
-        loss = 0.0
-        scores = {'sEH': [], 'BRD4': [], 'HSA': []}
-        labels = {'sEH': [], 'BRD4': [], 'HSA': []}
-        for i, data in enumerate(loader, 0):
-            
-            imolecule_ids, iX, iy = data
-            optimizer.zero_grad()
-            outputs = net(iX)
-            
-            loss1 = criterion1(outputs['sEH'], iy['sEH'])
-            loss2 = criterion2(outputs['BRD4'], iy['BRD4'])
-            loss3 = criterion3(outputs['HSA'], iy['HSA'])
-            
-            iloss = loss1 + loss2 + loss3
-            iloss.backward()
-            optimizer.step()
 
-            loss += iloss.cpu().item()
-            for protein_name in iy.keys():
-                labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
-                scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
+        molct = 0
+        for imols in mols:
 
-            if (i % print_batches == 0) and (i != 0):
-                print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
-                start_time = time.time()
-                loss = 0.0
-                save_model(net, save_folder, save_name, verbose = False)
+            molct += 1
+            loader = get_loader(mols = imols, blocks = blocks, options = options)
 
-            del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
-    
-    save_model(net, save_folder, save_name, verbose = False)
-    return net, labels, scores
+            start_time = time.time()
+            print(f'epoch {epoch + 1} split {molct} of {num_splits}')
+            loss = 0.0
+            scores = {'sEH': [], 'BRD4': [], 'HSA': []}
+            labels = {'sEH': [], 'BRD4': [], 'HSA': []}
+            for i, data in enumerate(loader, 0):
+                
+                imolecule_ids, iX, iy = data
+                optimizer.zero_grad()
+                outputs = net(iX)
+                
+                loss1 = criterion1(outputs['sEH'], iy['sEH'])
+                loss2 = criterion2(outputs['BRD4'], iy['BRD4'])
+                loss3 = criterion3(outputs['HSA'], iy['HSA'])
+                
+                iloss = loss1 + loss2 + loss3
+                iloss.backward()
+                optimizer.step()
+
+                loss += iloss.cpu().item()
+                for protein_name in iy.keys():
+                    labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
+                    scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
+
+                if (i % print_batches == 0) and (i != 0):
+                    print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
+                    start_time = time.time()
+                    loss = 0.0
+                    save_model(net, save_folder, save_name, verbose = False)
+
+                del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
+        
+        save_model(net, save_folder, save_name, verbose = False)
+        return net, labels, scores
     
 def run_val(loader, net, print_batches = 2000): 
 

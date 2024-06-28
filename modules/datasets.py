@@ -87,31 +87,33 @@ class Dataset_Mols(Dataset):
         return self.mol_ids[idx], self.features[idx], iy
             
 
-def get_loader(indir, device = 'cpu',  options = {}, submit = False, checktrain = False):
+def get_loader(indir, mols = None, blocks = None, device = 'cpu',  options = {}, submit = False, checktrain = False):
     
-    molpath = f'{indir}/mols.parquet'
-    print(f'loading {molpath}')
-    istest = 'test' in indir
-    isval = 'val' in indir
-    getcols = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']
-    if not istest: getcols = getcols + ['binds_sEH', 'binds_BRD4', 'binds_HSA']
+    if mols is None:
 
-    # always read the full file then sample it down.
-    mols = pl.read_parquet(molpath, columns = getcols)
+        molpath = f'{indir}/mols.parquet'
+        print(f'loading {molpath}')
+        istest = 'test' in indir
+        isval = 'val' in indir
+        getcols = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']
+        if not istest: getcols = getcols + ['binds_sEH', 'binds_BRD4', 'binds_HSA']
 
-    if checktrain or isval:
-        mols = mols.sample(100*1000)            
-    elif (not submit) and (str(options['n_rows']) != 'all'):
-        mols = mols.sample(options['n_rows'])
+        # always read the full file then sample it down.
+        mols = pl.read_parquet(molpath, columns = getcols)
 
-    mols = mols.with_row_index()
+        if checktrain or isval:
+            mols = mols.sample(100*1000)            
+        elif (not submit) and (str(options['n_rows']) != 'all'):
+            mols = mols.sample(options['n_rows'])
+
+        mols = mols.with_row_index()
     
-    print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
+        print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
-    # we must use the full blocks (not train/val) to have aligned indexes.
-    blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
-    print(f'blocks: {blockpath}')
-    blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
+        # we must use the full blocks (not train/val) to have aligned indexes.
+        blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
+        print(f'blocks: {blockpath}')
+        blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
 
     if istest:
         targets = None
