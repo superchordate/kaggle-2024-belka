@@ -25,6 +25,13 @@ def blocks_add_ecfp(blocks):
     iblocks.columns = ['index', 'ecfp'] # prior operation will remove column names.
     return blocks.with_columns(iblocks['ecfp'])
 
+def pools(x):
+    xDF = pd.DataFrame(x)
+    ipools = xDF.mean(axis = 0).values
+    ipools = np.append(ipools, xDF.max(axis = 0).values)
+    ipools = np.append(ipools, xDF.sum(axis = 0).values)
+    return ipools
+
 def blocks_add_onehot(blocks):
 
     # fit the tokenizer.
@@ -33,11 +40,9 @@ def blocks_add_onehot(blocks):
 
     # create the onehot encoding.
     smiles_encoded = tokenizer(blocks['smiles'], enclose = False)
-    smiles_encoded = [pd.DataFrame(x).apply(sum).values for x in smiles_encoded] # collapse to one row of counts per record.
-    # smiles_encoded = np.array([list(x) for x in smiles_encoded])
-    smiles_encoded = np.array(np.vstack(smiles_encoded), dtype=np.int8)
-
-    return blocks.with_columns(pl.Series('onehot', smiles_encoded))
+    smiles_encoded_pools = [pools(x) for x in smiles_encoded]
+    
+    return blocks.with_columns(pl.Series('onehot', smiles_encoded_pools))
 
 # https://greglandrum.github.io/rdkit-blog/posts/2022-12-23-descriptor-tutorial.html
 # len(getMolDescriptors(Chem.MolFromSmiles(all_blocks['smiles'][0]))) # 210
@@ -108,13 +113,7 @@ def word_embedding(smiles):
     isentence = MolSentence(mol2alt_sentence(mol, radius=1))
     iembedding = sentences2vec(isentence, w2v_model) # this will be 300 cols and n rows (n = number of words).
 
-    # do pooling.
-    iembedding = pd.DataFrame(iembedding)
-    ipools = iembedding.mean(axis = 0).values
-    ipools = np.append(ipools, iembedding.max(axis = 0).values)
-    ipools = np.append(ipools, iembedding.sum(axis = 0).values)
-
-    return ipools
+    return pools(iembedding)
 
 def blocks_add_word_embeddings(blocks):
     word_embeddings = [word_embedding(smiles) for smiles in blocks['smiles']]

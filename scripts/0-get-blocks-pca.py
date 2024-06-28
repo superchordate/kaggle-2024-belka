@@ -6,7 +6,7 @@ from modules.preprocessing import get_pca
 from modules.utils import save1, fileremove, dircreate, fileexists
 from modules.features import blocks_add_ecfp, blocks_add_onehot, blocks_add_descriptors, blocks_add_graph_embeddings, blocks_add_word_embeddings
 
-fromscratch = False
+fromscratch = True
 dircreate('out', fromscratch = fromscratch)
 dircreate('out/train')
 dircreate('out/test')
