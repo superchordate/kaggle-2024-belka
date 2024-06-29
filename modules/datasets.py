@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch, sys, math
 from modules.features import features
+from modules.utils import gcp
 import numpy as np
 import polars as pl
     
@@ -111,7 +112,10 @@ def get_loader(indir, mols = None, blocks = None, device = 'cpu',  options = {},
         print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
         # we must use the full blocks (not train/val) to have aligned indexes.
-        blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
+        if gcp():
+            blockpath = ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
+        else:
+            blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
         print(f'blocks: {blockpath}')
         blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
         

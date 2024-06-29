@@ -1,0 +1,29 @@
+{
+    "taskGroups": [
+        {
+            "taskSpec": {
+                "runnables": [
+                    {
+                        "container": {
+                            "imageUri": "us-central1-docker.pkg.dev/data-science-417721/kaggle-repository/batch-job-highmem:latest"
+                        }
+                    }
+                ],
+                "computeResource": {
+                    "cpuMilli": "8000",
+                    "memoryMib": "16000"
+                },
+                "maxRunDuration": "3600s"
+            },
+            "taskCount": 1,
+            "parallelism": 1,
+            "taskCountPerNode": 1
+        }
+    ],
+    "allocationPolicy": {
+        "location": {"allowedLocations": ["regions/us-central1"] }
+    },
+    "logsPolicy": {
+        "destination": "CLOUD_LOGGING"
+    }
+}

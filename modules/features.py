@@ -1,17 +1,22 @@
-from rdkit import Chem
-from rdkit.Chem import AllChem, Descriptors
-from pysmilesutils.tokenize import SMILESTokenizer
-from rdkit.Chem import rdFingerprintGenerator
 import numpy as np
 import polars as pl
 import pandas as pd
-from mol2vec.features import mol2alt_sentence, MolSentence, DfVec, sentences2vec
-from gensim.models import word2vec
-import networkx as nx
-from karateclub import Graph2Vec
-import warnings
+from modules.utils import gcp
 
-mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius =2 , fpSize = 2048)
+if not gcp():
+
+    from rdkit import Chem
+    from rdkit.Chem import AllChem, Descriptors
+    from pysmilesutils.tokenize import SMILESTokenizer
+    from rdkit.Chem import rdFingerprintGenerator
+    from mol2vec.features import mol2alt_sentence, MolSentence, DfVec, sentences2vec
+    from gensim.models import word2vec
+    import networkx as nx
+    from karateclub import Graph2Vec
+
+    mfpgen = rdFingerprintGenerator.GetMorganGenerator(radius =2 , fpSize = 2048)
+    w2v_model = word2vec.Word2Vec.load('data/model_300dim.pkl')
+    graph_embed_model = Graph2Vec()
 
 def ecfp(smile):
     molecule = Chem.MolFromSmiles(smile)
@@ -104,7 +109,6 @@ def features(dt, blocks, options):
 
 # https://towardsdatascience.com/basic-molecular-representation-for-machine-learning-b6be52e9ff76
 # download from https://github.com/samoturk/mol2vec/blob/master/examples/models/model_300dim.pkl.
-w2v_model = word2vec.Word2Vec.load('data/model_300dim.pkl')
 def word_embedding(smiles):
     
     mol = Chem.MolFromSmiles(smiles)
@@ -122,8 +126,6 @@ def blocks_add_word_embeddings(blocks):
 
 # graph embeddings:
 # https://towardsdatascience.com/basic-molecular-representation-for-machine-learning-b6be52e9ff76
-graph_embed_model = Graph2Vec()
-
 # define the function for coverting rdkit object to networkx object
 def mol_to_nx(smiles):
     mol = Chem.MolFromSmiles(smiles)

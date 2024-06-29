@@ -19,6 +19,10 @@ gcloud batch jobs submit fit --location us-central1 --config jobs/train-model/in
 
 gcloud batch jobs delete replaceblockids --location us-central1
 gcloud batch jobs submit replaceblockids --location us-central1 --config jobs/replace-block-ids/instance-template.json
+
+gcloud batch jobs delete submit --location us-central1
+gcloud batch jobs submit submit --location us-central1 --config jobs/submit/instance-template.json
+
 ```
 
 Helpful links and commands:
