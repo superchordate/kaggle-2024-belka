@@ -26,7 +26,7 @@ def blocks_add_ecfp(blocks):
     return blocks.with_columns(iblocks['ecfp'])
 
 def pools(x):
-    xDF = pd.DataFrame(x)
+    xDF = pd.DataFrame(np.array(x))
     ipools = xDF.mean(axis = 0).values
     ipools = np.append(ipools, xDF.max(axis = 0).values)
     ipools = np.append(ipools, xDF.sum(axis = 0).values)
@@ -41,6 +41,7 @@ def blocks_add_onehot(blocks):
     # create the onehot encoding.
     smiles_encoded = tokenizer(blocks['smiles'], enclose = False)
     smiles_encoded_pools = [pools(x) for x in smiles_encoded]
+    smiles_encoded_pools = np.vstack(smiles_encoded_pools)
     
     return blocks.with_columns(pl.Series('onehot', smiles_encoded_pools))
 

@@ -37,7 +37,7 @@ for train_test in ['test', 'train']:
         # print(f'batch {ct} {np.sum([len(x) for x in building_blocks]):.0f} unique blocks')
     
     building_blocks = pl.DataFrame({'smiles': np.unique(np.concatenate(building_blocks))}).with_row_index()
-    building_blocks = building_blocks.with_columns(pl.col('index').cast(pl.UInt8))
+    building_blocks = building_blocks.with_columns(pl.col('index').cast(pl.UInt16))
     
     building_blocks.write_parquet(filename)
     blocks[train_test] = building_blocks
