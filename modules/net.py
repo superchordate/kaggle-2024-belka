@@ -1,4 +1,4 @@
-import torch, os, time
+import torch, os, time, gc
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -141,7 +141,7 @@ def train(
 
     # the data is too large to fit in memory, so we need to load it in batches.
     if options['n_rows'] == 'all':
-        num_splits = 30
+        num_splits = 150
         mols = mols.with_columns(pl.Series('group', np.random.choice(range(num_splits), mols.shape[0])))
         mols = mols.partition_by('group', include_key = False)
         print(f'split mols to {num_splits} random splits for processing.')
@@ -150,17 +150,18 @@ def train(
         print(f'sampled to {options["n_rows"]/1000/1000:.1f}M rows.')
     
     print(f'training {save_name}')
-    print(f'{len(loader):,.0f} batches')
     for epoch in range(options['epochs']):
 
         molct = 0
         for imols in mols:
 
             molct += 1
-            loader = get_loader(mols = imols, blocks = blocks, options = options)
-
-            start_time = time.time()
             print(f'epoch {epoch + 1} split {molct} of {num_splits}')
+            
+            loader = get_loader(indir = '', mols = imols, blocks = blocks, options = options)
+            print(f'{len(loader):,.0f} batches')
+            
+            start_time = time.time()
             loss = 0.0
             scores = {'sEH': [], 'BRD4': [], 'HSA': []}
             labels = {'sEH': [], 'BRD4': [], 'HSA': []}
@@ -190,6 +191,9 @@ def train(
                     save_model(net, save_folder, save_name, verbose = False)
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
+            
+            del imols, loader
+            gc.collect()
         
         save_model(net, save_folder, save_name, verbose = False)
         return net, labels, scores
