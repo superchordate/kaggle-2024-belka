@@ -114,6 +114,11 @@ def get_loader(indir, mols = None, blocks = None, device = 'cpu',  options = {},
         blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
         print(f'blocks: {blockpath}')
         blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
+        
+    else: 
+        istest = False
+        isval = False
+        mols = mols.with_row_index()
 
     if istest:
         targets = None

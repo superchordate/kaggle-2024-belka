@@ -34,7 +34,7 @@ for protein_name in ['BRD4', 'HSA']:
     del idt, protein_name
     gc.collect()
     
-    mols = mols.rename({'id': 'molecule_id'})
+mols = mols.rename({'id': 'molecule_id'})
     
 mols = mols.select([
     'molecule_id',

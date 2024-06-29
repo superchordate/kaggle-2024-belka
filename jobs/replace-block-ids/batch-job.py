@@ -5,11 +5,11 @@ import polars as pl
 import gc, os
 import numpy as np
 
-os.system(f'gsutil cp gs://kaggle-417721/batch-data.zip batch-data.zip && unzip batch-data.zip && rm batch-data.zip')
+os.system(f'gsutil cp gs://kaggle-417721/blocks-1-smiles.parquet blocks-1-smiles.parquet')
 
 train_test = 'train'
 
-blocks = pl.read_parquet(f'batch-data/blocks-1-smiles.parquet')
+blocks = pl.read_parquet(f'/blocks-1-smiles.parquet')
 blocks = blocks.select(['index', 'smiles'])
 
 for protein_name in ['sEH', 'BRD4', 'HSA']:  
@@ -17,8 +17,9 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
     filename = f'{train_test}-{protein_name}-wids.parquet'
     
     print(f'replace block ids at: {filename}')
-    dt = pl.read_parquet(f'batch-data/{filename}')
-    dt = dt.with_columns(pl.col('id').cast(pl.Int32))
+    os.system(f'gsutil cp gs://kaggle-417721/train-{protein_name}.parquet train-{protein_name}.parquet')
+    dt = pl.read_parquet(f'train-{protein_name}.parquet')
+    dt = dt.with_columns(pl.col('id').cast(pl.UInt32))
     
     # joins in pyarrow will be faster, start there.
     dt = dt.join(blocks, left_on = 'buildingblock1_smiles', right_on = 'smiles', how = 'inner')

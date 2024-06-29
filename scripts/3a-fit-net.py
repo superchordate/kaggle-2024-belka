@@ -12,8 +12,9 @@ import numpy as np
 
 #dircreate('out/net', fromscratch = True)
 
-useprior = False
+useprior = True
 justsubmit = False
+dircreate('out/net')
 
 options = {
     'epochs': 3,
@@ -23,7 +24,7 @@ options = {
     'dropout': 50,
     'rebalanceto': 0.1,
     'n_rows': 'all',
-    'print_batches': 1000,
+    'print_batches': 2000,
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'

@@ -17,7 +17,7 @@ for train_test in ['test']:
         
             print(f'replace block ids at: {filename}')
             dt = pl.read_parquet(f'out/{train_test}/{train_test}-{protein_name}.parquet')
-            dt = dt.with_columns(pl.col('id').cast(pl.Uint16))
+            dt = dt.with_columns(pl.col('id').cast(pl.UInt32))
             
             dt = dt.join(blocks, left_on = 'buildingblock1_smiles', right_on = 'smiles', how = 'inner')
             dt = dt.rename({'index': 'buildingblock1_index'}).drop('buildingblock1_smiles')
