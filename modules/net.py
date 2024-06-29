@@ -111,6 +111,7 @@ def train(
         criterion = None
 ):  
     idevice = device()
+    if gcp(): print(idevice)
 
     # load mols and blocks.
     molpath = f'{indir}/mols.parquet'
@@ -141,7 +142,7 @@ def train(
 
     # the data is too large to fit in memory, so we need to load it in batches.
     if options['n_rows'] == 'all':
-        num_splits = 150
+        num_splits = 30 if gcp() else 150
         mols = mols.with_columns(pl.Series('group', np.random.choice(range(num_splits), mols.shape[0])))
         mols = mols.partition_by('group', include_key = False)
         print(f'split mols to {num_splits} random splits for processing.')
