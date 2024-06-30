@@ -78,7 +78,7 @@ def train(
         for imols in mols:
 
             molct += 1
-            # print(f'epoch {epoch + 1} split {molct} of {options["num_splits"]}')
+            print(f'epoch {epoch + 1} split {molct} of {options["num_splits"]}')
             
             loader = get_loader(indir = '', mols = imols, blocks = blocks, options = options)
             print(f'{len(loader):,.0f} batches')
@@ -92,7 +92,7 @@ def train(
                 imolecule_ids, iX, iy = data
                 optimizer.zero_grad()
 
-                print(f'iX: {iX.device}, iy: {iy["sEH"].device}, net: {next(net.parameters()).device}')
+                # print(f'iX: {iX.device}, iy: {iy["sEH"].device}, net: {next(net.parameters()).device}')
 
                 outputs = net(iX)
                 
@@ -113,12 +113,13 @@ def train(
                     print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
                     start_time = time.time()
                     loss = 0.0
-                    save_model(net, save_folder, save_name, verbose = False)
+                    if not gcp(): save_model(net, save_folder, save_name, verbose = False)
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
             
             del imols, loader
             gc.collect()
+            if gcp(): save_model(net, save_folder, save_name, verbose = False)
         
         save_model(net, save_folder, save_name, verbose = gcp())
         return net, labels, scores
