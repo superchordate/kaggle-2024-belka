@@ -28,7 +28,7 @@ def train(
         molpath, 
         columns = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index', 'binds_sEH', 'binds_BRD4', 'binds_HSA']
     )
-    blockspath = f'{indir}/blocks/blocks-3-pca.parquet' if not gcp() else 'blocks-3-pca.parquet'
+    blockspath = f'out/blocks-3-pca.parquet' if not gcp() else 'blocks-3-pca.parquet'
     blocks = pl.read_parquet(blockspath, columns = ['index', 'features_pca'])
 
     # get the network, optimizer, and criterion.
@@ -103,13 +103,13 @@ def train(
                     print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
                     start_time = time.time()
                     loss = 0.0
-                    if not gcp(): save_model(net, save_folder, save_name, verbose = False)
+                    if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
             
             del imols, loader
             gc.collect()
-            if gcp(): save_model(net, save_folder, save_name, verbose = False)
+            if gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
         
         save_model(net, save_folder, save_name, verbose = gcp())
         return net, labels, scores

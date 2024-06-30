@@ -12,12 +12,12 @@ options = {
     'dropout': 50,
     'rebalanceto': 0.1,
     'n_rows': 'all',
-    'print_batches': 2000,
-    'network': 'lg',
-    'num_splits': 150 if gcp() else 300
+    'print_batches': 1000,
+    'network': 'md',
+    'num_splits': 100 if gcp() else 300
 }
 
-run_name = 'lg-allrows-3e'
+run_name = 'md-allrows-3e'
 
 if gcp():
     os.system('gsutil cp gs://kaggle-417721/blocks-3-pca.parquet blocks-3-pca.parquet')

@@ -3,10 +3,7 @@ from modules.utils import fileexists
 import numpy as np
 import gc
 
-# see jobs\replace-block-ids\batch-job.py to do train. 
-# train requires very high memory.
 for train_test in ['test', 'train']: 
-#for train_test in ['test']:
     
     blocks = pl.read_parquet(f'out/blocks-1-smiles.parquet')
     blocks = blocks.select(['index', 'smiles'])

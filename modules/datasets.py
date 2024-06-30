@@ -113,9 +113,9 @@ def get_loader(indir, mols = None, blocks = None, options = {}, submit = False, 
 
         # we must use the full blocks (not train/val) to have aligned indexes.
         if gcp():
-            blockpath = ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
+            blockpath = 'blocks-3-pca.parquet'
         else:
-            blockpath = 'out/' + ('test' if istest else 'train') + '/blocks/blocks-3-pca.parquet'
+            blockpath = 'out/blocks-3-pca.parquet'
         print(f'blocks: {blockpath}')
         blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
         
