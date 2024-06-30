@@ -2,16 +2,16 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch, sys, math
 from modules.features import features
-from modules.utils import gcp
+from modules.utils import device
 import numpy as np
 import polars as pl
     
 class Dataset_Mols(Dataset):
 
-    def __init__(self, mols, blocks, targets = None, device = 'cpu', options = {}):
+    def __init__(self, mols, blocks, targets = None, options = {}):
         
         self.istest = not isinstance(targets, pl.DataFrame)
-        self.device = device
+        self.device = device()
         self.options = options
         
         if not self.istest:
@@ -88,7 +88,7 @@ class Dataset_Mols(Dataset):
         return self.mol_ids[idx], self.features[idx], iy
             
 
-def get_loader(indir, mols = None, blocks = None, device = 'cpu',  options = {}, submit = False, checktrain = False):
+def get_loader(indir, mols = None, blocks = None, options = {}, submit = False, checktrain = False):
     
     if mols is None:
 
@@ -140,7 +140,7 @@ def get_loader(indir, mols = None, blocks = None, device = 'cpu',  options = {},
     return DataLoader(
         Dataset_Mols(
             mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']), 
-            blocks, targets, device, options
+            blocks, targets, options
         ), 
         batch_size = batch_size, shuffle = shuffle, num_workers = 0
     )

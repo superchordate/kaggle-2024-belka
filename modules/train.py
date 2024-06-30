@@ -36,14 +36,15 @@ def train(
         print('starting from clean network')
         input_len = len(features(mols[0,], blocks, options)[0])
         if options['network'] == 'lg':
-            net = MLP_lg(options = options, input_len = input_len).to(idevice)
+            net = MLP_lg(options = options, input_len = input_len)
         elif options['network'] == 'md':
-            net = MLP_md(options = options, input_len = input_len).to(idevice)
+            net = MLP_md(options = options, input_len = input_len)
         else:
-            net = MLP_sm(options = options, input_len = input_len).to(idevice)
+            net = MLP_sm(options = options, input_len = input_len)
         del input_len
     else:
         print('using existing network')
+    net = net.to(idevice)
     
     if not optimizer:
         #optimizer = optim.SGD(net.parameters(), lr=options['lr'], momentum=options['momentum'])
@@ -63,10 +64,9 @@ def train(
 
     # the data is too large to fit in memory, so we need to load it in batches.
     if options['n_rows'] == 'all':
-        num_splits = 30 if gcp() else 150
-        mols = mols.with_columns(pl.Series('group', np.random.choice(range(num_splits), mols.shape[0])))
+        mols = mols.with_columns(pl.Series('group', np.random.choice(range(options['num_splits']), mols.shape[0])))
         mols = mols.partition_by('group', include_key = False)
-        print(f'split mols to {num_splits} random splits for processing.')
+        print(f'split mols to {options["num_splits"]} random splits for processing.')
     else:
         mols = [mols.sample(options['n_rows'])]
         print(f'sampled to {options["n_rows"]/1000/1000:.1f}M rows.')
@@ -78,7 +78,7 @@ def train(
         for imols in mols:
 
             molct += 1
-            print(f'epoch {epoch + 1} split {molct} of {num_splits}')
+            # print(f'epoch {epoch + 1} split {molct} of {options["num_splits"]}')
             
             loader = get_loader(indir = '', mols = imols, blocks = blocks, options = options)
             print(f'{len(loader):,.0f} batches')
@@ -91,6 +91,9 @@ def train(
                 
                 imolecule_ids, iX, iy = data
                 optimizer.zero_grad()
+
+                print(f'iX: {iX.device}, iy: {iy["sEH"].device}, net: {next(net.parameters()).device}')
+
                 outputs = net(iX)
                 
                 loss1 = criterion1(outputs['sEH'], iy['sEH'])

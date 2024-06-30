@@ -20,7 +20,20 @@
         }
     ],
     "allocationPolicy": {
-        "location": {"allowedLocations": ["regions/us-central1"] }
+        "location": {"allowedLocations": ["regions/us-central1"] },
+        "instances": [
+            {
+                "installGpuDrivers": true,
+                "policy": {
+                    "accelerators": [
+                        {
+                            "type": "nvidia-l4",
+                            "count": 1
+                          }
+                    ]
+                }
+            }
+        ]
     },
     "logsPolicy": {
         "destination": "CLOUD_LOGGING"
