@@ -3,12 +3,12 @@ import gc
 
 # for train, things are aligned so no join is necessary.
     
-mols = pl.read_parquet(f'out/train/train-sEH-wids.parquet')
+mols = pl.read_parquet('out/train/train-sEH-wids.parquet')
 
 mols = mols.with_columns(pl.col('buildingblock1_index').cast(pl.UInt16))
 mols = mols.with_columns(pl.col('buildingblock2_index').cast(pl.UInt16))
 mols = mols.with_columns(pl.col('buildingblock3_index').cast(pl.UInt16))
-mols = mols.with_columns(pl.col('id').cast(pl.UInt32))
+mols = mols.with_columns(pl.col('id').cast(pl.UInt64)) # test requires UInt64
     
 mols = mols.rename({'binds': 'binds_sEH'})
 mols = mols.with_columns(pl.col('binds_sEH').cast(pl.Boolean))

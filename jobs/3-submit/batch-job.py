@@ -17,7 +17,7 @@ options = {
     'print_batches': 2000,
 }
 
-modelfile = 'smallnet-allrows-2e'
+modelfile = 'lg-allrows-3e'
 
 os.system(f'gsutil cp gs://kaggle-417721/{modelfile}.pt {modelfile}.pt')
 os.system('gsutil cp gs://kaggle-417721/test.zip test.zip')

@@ -13,7 +13,7 @@ def train(
         save_name,        
         options,
         print_batches = 2000,
-        net = None, 
+        model_load_path = None, 
         optimizer = None,
         # criterion = nn.MSELoss()
         criterion = None
@@ -32,19 +32,9 @@ def train(
     blocks = pl.read_parquet(blockspath, columns = ['index', 'features_pca'])
 
     # get the network, optimizer, and criterion.
-    if not net:
-        print('starting from clean network')
-        input_len = len(features(mols[0,], blocks, options)[0])
-        if options['network'] == 'lg':
-            net = MLP_lg(options = options, input_len = input_len)
-        elif options['network'] == 'md':
-            net = MLP_md(options = options, input_len = input_len)
-        else:
-            net = MLP_sm(options = options, input_len = input_len)
-        del input_len
-    else:
-        print('using existing network')
+    net, optimizer = get_model_optimizer(options, mols = mols, blocks = blocks, load_path = model_load_path)
     net = net.to(idevice)
+    net = net.train()
     
     if not optimizer:
         #optimizer = optim.SGD(net.parameters(), lr=options['lr'], momentum=options['momentum'])
@@ -151,16 +141,71 @@ def run_val(loader, net, print_batches = 2000):
             
     return molecule_ids, labels, scores
 
-def save_model(model, folder, name, verbose = True):
-    model_scripted = torch.jit.script(model.cpu())
+# https://pytorch.org/tutorials/beginner/saving_loading_models.html
+def save_model(model, optimizer, folder, name, verbose = True):
+
+    # JIT is preferred but has had issues.
+    model = model.cpu().eval()
+    basepath = f'{folder}/{name}' if not gcp() else name
+
+    # try:
+
+    #     torch.save(model, f'{basepath}.torch')
+    #     if gcp(): os.system(f'gsutil cp {basepath}.torch gs://kaggle-417721/{basepath}.torch')
+
+    #     # model_scripted = torch.jit.script(model.cpu())
+    #     # model_scripted.save(f'{basepath}.pt')        
+    #     # if gcp(): os.system(f'gsutil cp {basepath}.pt gs://kaggle-417721/{basepath}.pt')
+    #     if verbose:  print(f'saved {basepath}')
+
+    # except:        
+    #     print('!!failed to save model, load the weights instead.')
+
+    # always save the model state just in case there is an error with another save method.
+    torch.save(model.state_dict(), f'{basepath}.state')
+    torch.save(optimizer.state_dict(), f'{basepath}-opt.state')
     if gcp(): 
-        model_scripted.save(f'{name}.pt')
-        os.system(f'gsutil cp {name}.pt gs://kaggle-417721/{name}.pt')
-    else:
-        model_scripted.save(f'{folder}/{name}.pt')
-    if verbose: 
-        print(f'saved {folder}/{name}.pt')
+        os.system(f'gsutil cp {basepath}.state gs://kaggle-417721/{basepath}.state')
+        os.system(f'gsutil cp {basepath}-opt.state gs://kaggle-417721/{basepath}-opt.state')
+
     model = model.to(device())
     model = model.train()
 
+# https://pytorch.org/tutorials/beginner/saving_loading_models.html
+def get_model_optimizer(options, mols = None, blocks = None, load_path = None):
+
+    if load_path is not None: print(f'loading model path: {load_path}')
+
+    # if '.pt' in filename:
+
+    #     model = torch.jit.load(filename)
+
+    # elif '.torch' in filename:
+
+    #     model = torch.load(filename)
+
+    # elif '.tweights' in filename:
         
+    input_len = len(features(mols[0,], blocks, options)[0])
+    
+    if options['network'] == 'lg':
+        model = MLP_lg(options = options, input_len = input_len)
+    elif options['network'] == 'md':
+        model = MLP_md(options = options, input_len = input_len)
+    else:
+        model = MLP_sm(options = options, input_len = input_len)
+
+    if load_path is not None: model.load_state_dict(torch.load(f'{load_path}.state'))
+        
+    optimizer = torch.optim.Adam(
+        model.parameters(), 
+        lr = options['lr'], 
+        weight_decay = 1e-5,
+        amsgrad = True,
+        fused = gcp()
+    )
+
+    if load_path is not None: optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
+
+    return model, optimizer
+

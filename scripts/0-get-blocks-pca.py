@@ -6,7 +6,7 @@ from modules.preprocessing import get_pca
 from modules.utils import save1, fileremove, dircreate, fileexists
 from modules.features import blocks_add_ecfp, blocks_add_onehot, blocks_add_descriptors, blocks_add_graph_embeddings, blocks_add_word_embeddings
 
-fromscratch = True
+fromscratch = False
 dircreate('out', fromscratch = fromscratch)
 dircreate('out/train')
 dircreate('out/test')
@@ -36,55 +36,49 @@ for train_test in ['test', 'train']:
         building_blocks[2] = np.unique(np.concatenate([building_blocks[2], i['buildingblock3_smiles']]))
         # print(f'batch {ct} {np.sum([len(x) for x in building_blocks]):.0f} unique blocks')
     
-    building_blocks = pl.DataFrame({'smiles': np.unique(np.concatenate(building_blocks))}).with_row_index()
-    building_blocks = building_blocks.with_columns(pl.col('index').cast(pl.UInt16))
-    
+    building_blocks = pl.DataFrame({'smiles': np.unique(np.concatenate(building_blocks))})
     building_blocks.write_parquet(filename)
     blocks[train_test] = building_blocks
     
     del train_test, f, i, building_blocks, ct, filename, batch_size
 
 # run preprocessing on full data.
-blocks['train'] = blocks['train'].with_columns(pl.Series('train_test', ['train']*blocks['train'].shape[0]))
-blocks['test'] = blocks['test'].with_columns(pl.Series('train_test', ['test']*blocks['test'].shape[0]))
-all_blocks = pl.concat([blocks['train'], blocks['test']]).select(['train_test', 'index', 'smiles'])
+blocks = pl.concat([blocks['train'], blocks['test']]).select(['smiles']).unique()
 
-all_blocks = blocks_add_ecfp(all_blocks)
-all_blocks = blocks_add_onehot(all_blocks)
-all_blocks = blocks_add_descriptors(all_blocks)
-all_blocks = blocks_add_graph_embeddings(all_blocks)
-all_blocks = blocks_add_word_embeddings(all_blocks)
+blocks = blocks.with_row_index()
+blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
 
-for train_test in ['train', 'test']:
-    all_blocks.filter(pl.col('train_test') == train_test) \
-        .drop('train_test') \
-        .sort('index').write_parquet(f'out/{train_test}/blocks/blocks-2-features.parquet')
-    del train_test
+smiles_enum = pl.Enum(blocks['smiles'])
+blocks = blocks.with_columns(pl.col('smiles').cast(smiles_enum))
+blocks.sort('index').write_parquet(f'out/blocks-1-smiles.parquet')
+
+blocks = blocks_add_ecfp(blocks)
+blocks = blocks_add_onehot(blocks)
+blocks = blocks_add_descriptors(blocks)
+blocks = blocks_add_graph_embeddings(blocks)
+blocks = blocks_add_word_embeddings(blocks)
+
+blocks.sort('index').write_parquet(f'out/blocks-2-features.parquet')
 
 # combine features
-features = all_blocks['ecfp'].list.concat(
-    all_blocks['onehot'].list.concat(
-        all_blocks['descrs'].list.concat(
-            all_blocks['graph_embeddings'].list.concat(
-                all_blocks['word_embeddings']
+features = blocks['ecfp'].list.concat(
+    blocks['onehot'].list.concat(
+        blocks['descrs'].list.concat(
+            blocks['graph_embeddings'].list.concat(
+                blocks['word_embeddings']
 ))))
 features = np.vstack(features)
 
 # compress with pca.
-pcapipe = get_pca(features, info_cutoff = 0.99, from_full = False)
+pcapipe = get_pca(features, info_cutoff = 0.90, from_full = False)
 features = pcapipe.transform(features)
 
 # compress to integers.
 features = np.array(features * 1000, dtype = np.int8)
 
 # finish and save the block features. 
-all_blocks = all_blocks.select(['train_test', 'index']).with_columns(pl.Series('features_pca', features))
+blocks = blocks.select(['index']).with_columns(pl.Series('features_pca', features))
 del pcapipe, features
 
-for train_test in ['train', 'test']:
-    idt = all_blocks.filter(pl.col('train_test') == train_test) \
-        .drop('train_test') \
-        .sort('index')
-    idt.write_parquet(f'out/{train_test}/blocks/blocks-3-pca.parquet')
-    del idt, train_test
+blocks.sort('index').write_parquet(f'out/blocks-3-pca.parquet')
 

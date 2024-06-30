@@ -14,14 +14,14 @@ Use these scripts to delete/deploy jobs:
 ```
 gcloud config set project data-science-417721
 
+gcloud batch jobs delete replaceblockids --location us-central1
+gcloud batch jobs submit replaceblockids --location us-central1 --config jobs/1-replace-block-ids/instance-template.json
+
 gcloud batch jobs delete fit --location us-central1
 gcloud batch jobs submit fit --location us-central1 --config jobs/2-train-model/instance-template.json
 
-gcloud batch jobs delete replaceblockids --location us-central1
-gcloud batch jobs submit replaceblockids --location us-central1 --config jobs/replace-block-ids/instance-template.json
-
 gcloud batch jobs delete submit --location us-central1
-gcloud batch jobs submit submit --location us-central1 --config jobs/submit/instance-template.json
+gcloud batch jobs submit submit --location us-central1 --config jobs/3-submit/instance-template.json
 
 ```
 
