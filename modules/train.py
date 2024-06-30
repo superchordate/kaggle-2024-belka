@@ -1,104 +1,12 @@
 import torch, os, time, gc
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import numpy as np
 import polars as pl
 from modules.utils import device, gcp
 from modules.features import features
 from modules.datasets import get_loader
-
-class MLP(nn.Module):
-    def __init__(self, input_len = 1024):
-        super().__init__()
-        self.input_len = input_len
-        self.fc1 = nn.Linear(self.input_len, self.input_len)
-        self.batchnorm1 = nn.BatchNorm1d(self.input_len)
-        self.dropout1 = nn.Dropout(0.25)        
-        self.fc3 = nn.Linear(self.input_len, 500)
-        self.batchnorm3 = nn.BatchNorm1d(500)
-        self.dropout3 = nn.Dropout(0.3)
-        self.fc4 = nn.Linear(500, 100)
-        self.batchnorm4 = nn.BatchNorm1d(100)
-        self.dropout4 = nn.Dropout(0.3)
-        self.fc5 = nn.Linear(100, 10)
-        self.fc_fin = nn.Linear(10, 1)
-        self.sigmoid = nn.Sigmoid()
-    def forward(self, x):
-        x = torch.flatten(x, 1) # flatten all dimensions except batch        
-        x = F.relu(self.fc1(x))
-        x = self.batchnorm1(x)
-        x = self.dropout1(x)        
-        x = F.relu(self.fc3(x))
-        x = self.batchnorm3(x)
-        x = self.dropout3(x)        
-        x = F.relu(self.fc4(x))
-        x = self.batchnorm4(x)
-        x = self.dropout4(x)        
-        x = F.relu(self.fc5(x))        
-        x = self.fc_fin(x)
-        x = self.sigmoid(x)
-        return x
-
-class MLP_multi(nn.Module):
-    def __init__(self, options, input_len = 1024):
-
-        super().__init__()
-
-        self.dropoutpct = options['dropout']/100
-        self.input_len = input_len
-        print(f'input_len: {input_len}')
-
-        self.fc1 = nn.Linear(self.input_len, 1000)
-        self.batchnorm1 = nn.BatchNorm1d(1000)
-        self.dropout1 = nn.Dropout(self.dropoutpct)
-
-        # self.fc2 = nn.Linear(self.input_len, self.input_len)
-        # self.batchnorm2 = nn.BatchNorm1d(self.input_len)
-        # self.dropout2 = nn.Dropout(self.dropoutpct)
-
-        self.fc3 = nn.Linear(1000, 500)
-        self.batchnorm3 = nn.BatchNorm1d(500)
-        self.dropout3 = nn.Dropout(self.dropoutpct)
-
-        self.fc4 = nn.Linear(500, 100)
-        self.batchnorm4 = nn.BatchNorm1d(100)
-        self.dropout4 = nn.Dropout(self.dropoutpct)
-
-        self.fc5 = nn.Linear(100, 10)
-        self.fc_fin = nn.Linear(10, 3)
-
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
-
-        x = F.relu(self.fc1(x))
-        x = self.batchnorm1(x)
-        #x = self.dropout1(x)
-
-        # x = F.relu(self.fc2(x))
-        # x = self.batchnorm2(x)
-        #x = self.dropout2(x)
-
-        x = F.relu(self.fc3(x))
-        x = self.batchnorm3(x)
-        x = self.dropout3(x)
-
-        x = F.relu(self.fc4(x))
-        x = self.batchnorm4(x)
-        x = self.dropout4(x)
-
-        x = F.relu(self.fc5(x))
-        x = self.fc_fin(x)
-        x = self.sigmoid(x)
-        return {
-            'sEH': torch.reshape(x[:,0], (-1, 1)), 
-            'BRD4': torch.reshape(x[:,1], (-1, 1)), 
-            'HSA': torch.reshape(x[:,2], (-1, 1))
-        }
-    
+from modules.nets import MLP_sm, MLP_md, MLP_lg
+   
 def train(
         indir, 
         save_folder,
@@ -114,25 +22,38 @@ def train(
     if gcp(): print(idevice)
 
     # load mols and blocks.
-    molpath = f'{indir}/mols.parquet'
+    molpath = f'{indir}/mols.parquet' if not gcp() else 'mols.parquet'
     print(f'loading {molpath}')
     mols = pl.read_parquet(
         molpath, 
         columns = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index', 'binds_sEH', 'binds_BRD4', 'binds_HSA']
     )
-    blocks = pl.read_parquet('out/train/blocks/blocks-3-pca.parquet', columns = ['index', 'features_pca'])
+    blockspath = f'{indir}/blocks/blocks-3-pca.parquet' if not gcp() else 'blocks-3-pca.parquet'
+    blocks = pl.read_parquet(blockspath, columns = ['index', 'features_pca'])
 
     # get the network, optimizer, and criterion.
     if not net:
         print('starting from clean network')
         input_len = len(features(mols[0,], blocks, options)[0])
-        net = MLP_multi(options = options, input_len = input_len).to(idevice)
+        if options['network'] == 'lg':
+            net = MLP_lg(options = options, input_len = input_len).to(idevice)
+        elif options['network'] == 'md':
+            net = MLP_md(options = options, input_len = input_len).to(idevice)
+        else:
+            net = MLP_sm(options = options, input_len = input_len).to(idevice)
         del input_len
     else:
         print('using existing network')
     
     if not optimizer:
-        optimizer = optim.SGD(net.parameters(), lr=options['lr'], momentum=options['momentum'])
+        #optimizer = optim.SGD(net.parameters(), lr=options['lr'], momentum=options['momentum'])
+        optimizer = torch.optim.Adam(
+            net.parameters(), 
+            lr = options['lr'], 
+            weight_decay = 1e-5,
+            amsgrad = True,
+            fused = gcp()
+        )
 
     if not criterion: 
         criterion1 = nn.BCELoss().to(idevice)
@@ -196,7 +117,7 @@ def train(
             del imols, loader
             gc.collect()
         
-        save_model(net, save_folder, save_name, verbose = False)
+        save_model(net, save_folder, save_name, verbose = gcp())
         return net, labels, scores
     
 def run_val(loader, net, print_batches = 2000): 
@@ -228,9 +149,13 @@ def run_val(loader, net, print_batches = 2000):
 
 def save_model(model, folder, name, verbose = True):
     model_scripted = torch.jit.script(model.cpu())
-    model_scripted.save(f'{folder}/{name}.pt')
-    if gcp(): os.system(f'gsutil cp {folder}/{name}.pt gs://kaggle-417721/{name}.pt')
-    if verbose: print(f'saved {folder}/{name}.pt')
+    if gcp(): 
+        model_scripted.save(f'{name}.pt')
+        os.system(f'gsutil cp {name}.pt gs://kaggle-417721/{name}.pt')
+    else:
+        model_scripted.save(f'{folder}/{name}.pt')
+    if verbose: 
+        print(f'saved {folder}/{name}.pt')
     model = model.to(device())
     model = model.train()
 

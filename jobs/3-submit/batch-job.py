@@ -1,6 +1,6 @@
 
 from modules.datasets import get_loader
-from modules.net import run_val
+from modules.train import run_val
 from datetime import datetime
 import pandas as pd
 import polars as pl

@@ -1,28 +1,44 @@
-# https://www.kaggle.com/code/jetakow/home-credit-2024-starter-notebook/notebook
-
-from modules.datasets import get_loader
-from modules.net import train, run_val
-from modules.score import kaggle_score
-from modules.utils import pad0
+from modules.train import train
 import os, torch
-from datetime import datetime
-import pandas as pd
 
-# download data.
-# the container will have already downloaded modules. 
-os.system(f'gsutil cp gs://kaggle-417721/base.zip base.zip && unzip base.zip && rm base.zip')
-os.system(f'gsutil cp gs://kaggle-417721/building_blocks.parquet building_blocks.parquet')
+useprior = True
 
-run_name = 'files5-droput5-epochs3'
+options = {
+    'epochs': 3,
+    'train_batch_size': 100,
+    'lr': 0.001,
+    'momentum': 0.9,
+    'dropout': 50,
+    'rebalanceto': 0.1,
+    'n_rows': 'all',
+    'print_batches': 2000,
+    'network': 'lg'
+}
 
-# for protein_name in ['sEH', 'BRD4', 'HSA']:
-for protein_name in [['sEH', 'BRD4', 'HSA'][int(os.environ.get('BATCH_TASK_INDEX'))]]:
-    
-    ids, net, labels, scores = train(
-        get_loader('', protein_name, n_files = 5),
-        epochs = 3,
-        save_folder = '',
-        save_name = f'net-{run_name}-{protein_name}',
-        print_batches = 10000
+run_name = 'md-allrows-3e'
+
+model_path = f'{run_name}.pt'
+
+os.system('gsutil cp gs://kaggle-417721/blocks-3-pca.parquet blocks-3-pca.parquet')
+os.system('gsutil cp gs://kaggle-417721/mols.parquet mols.parquet')
+os.system(f'gsutil cp gs://kaggle-417721/{model_path} {model_path}')
+
+if not os.path.exists(model_path):
+    net, labels, scores = train(
+        indir = '.',
+        options = options,
+        print_batches = options['print_batches'],
+        save_folder = '.',
+        save_name = run_name
     )
-
+elif useprior:
+    net, labels, scores = train(
+        indir = '.',
+        options = options,
+        print_batches = options['print_batches'],
+        save_folder = '.',
+        net = torch.jit.load(model_path).train(),
+        save_name = run_name
+    )
+else:
+    raise Exception('Model already exists')

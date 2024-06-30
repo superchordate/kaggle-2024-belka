@@ -1,6 +1,6 @@
 
 from modules.datasets import get_loader
-from modules.net import run_val
+from modules.train import run_val
 from datetime import datetime
 import pandas as pd
 import polars as pl
@@ -19,7 +19,7 @@ options = {
 
 modelfile = 'smallnet-allrows-2e'
 
-net = torch.jit.load(f'{modelfile}.pt').eval()
+net = torch.jit.load(f'out/net/{modelfile}.pt').eval()
 
 # run test to get the actual submission.
 molecule_ids, labels, scores = run_val(
@@ -54,5 +54,6 @@ submission = pd.concat(submission).sort_values('id')
 if submission.shape[0] != 1674896:
     raise Exception(f'Submission must have 1674896 rows, found: {submission.shape[0]}')
 
-submitfile = f'out/submission-{datetime.today().strftime("%Y%m%d")}-{modelfile}.parquet'
+dircreate('out/submit/')
+submitfile = f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{modelfile}.parquet'
 submission.to_parquet(submitfile, index = False)

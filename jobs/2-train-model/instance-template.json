@@ -10,13 +10,12 @@
                     }
                 ],
                 "computeResource": {
-                    "cpuMilli": "16000",
-                    "memoryMib": "12000"
-                },
-                "maxRunDuration": "28800s"
+                    "cpuMilli": "12000",
+                    "memoryMib": "20000"
+                }
             },
-            "taskCount": 3,
-            "parallelism": 3,
+            "taskCount": 1,
+            "parallelism": 1,
             "taskCountPerNode": 1
         }
     ],

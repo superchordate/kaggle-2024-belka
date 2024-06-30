@@ -1,7 +1,7 @@
 # https://www.kaggle.com/code/jetakow/home-credit-2024-starter-notebook/notebook
 
 from modules.datasets import get_loader
-from modules.net import train, run_val
+from modules.train import train, run_val
 from modules.score import kaggle_score, print_results
 from modules.utils import pad0, dircreate
 import os, torch
@@ -11,10 +11,7 @@ import polars as pl
 import numpy as np
 
 #dircreate('out/net', fromscratch = True)
-
 useprior = True
-justsubmit = False
-dircreate('out/net')
 
 options = {
     'epochs': 3,
@@ -24,25 +21,27 @@ options = {
     'dropout': 50,
     'rebalanceto': 0.1,
     'n_rows': 'all',
-    'print_batches': 2000,
+    'print_batches': 1000,
+    'network': 'md'
 }
 
 #run_name = f'epochs{options["epochs"]}-trainbatch{options["train_batch_size"]}-dropout{options["dropout"]}-n_rows{options["n_rows"]}'
-run_name = 'smallnet-allrows-2e'
+run_name = 'md-allrows-3e-adam'
 
 # train model
+dircreate('out/net')
 model_path = f'out/net/{run_name}.pt'
-if not os.path.exists(model_path) and not justsubmit:
+if not os.path.exists(model_path):
     net, labels, scores = train(
-        indir = 'out/train/train/',
+        indir = 'out/train/',
         options = options,
         print_batches = options['print_batches'],
         save_folder = 'out/net/',
         save_name = f'{run_name}'
     )
-elif useprior and not justsubmit:
+elif useprior:
     net, labels, scores = train(
-        indir = 'out/train/train/',
+        indir = 'out/train/',
         options = options,
         print_batches = options['print_batches'],
         save_folder = 'out/net/',
