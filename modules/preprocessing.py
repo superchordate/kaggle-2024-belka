@@ -9,6 +9,9 @@ def get_pca(X, info_cutoff = 0.95, col_increment = None, verbose = 1, from_full 
     nrows = len(X)
     if col_increment == None: col_increment = int(.01*ncols) if ncols > 100 else 1
     if verbose > 0: print(f'running PCA on {ncols} columns {nrows} rows, col_increment: {col_increment}')
+    if from_full and ncols < nrows:
+        print('from_full is True but ncols < nrows, switching to from_full = False')
+        from_full = False
 
      # scale and normalize prior to PCA.
     pipe = Pipeline([
