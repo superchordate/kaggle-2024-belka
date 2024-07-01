@@ -97,7 +97,7 @@ def train(
                 iloss.backward()
                 optimizer.step()
 
-                loss += iloss.cpu().item()
+                loss += float(iloss.cpu().item())
                 for protein_name in iy.keys():
                     labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
                     scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
@@ -107,11 +107,14 @@ def train(
                     start_time = time.time()
                     loss = 0.0
                     if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
+                    torch.cuda.empty_cache()
+                    if gcp(): print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
             
             del imols, loader
             gc.collect()
+            torch.cuda.empty_cache()
             if gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
             net.to(idevice)
             net.train()
@@ -182,8 +185,6 @@ def save_model(model, optimizer, folder, name, verbose = True):
 # https://pytorch.org/tutorials/beginner/saving_loading_models.html
 def get_model_optimizer(options, mols = None, blocks = None, load_path = None, load_optimizer = True):
 
-    if load_path is not None: print(f'loading model path: {load_path}')
-
     # if '.pt' in filename:
 
     #     model = torch.jit.load(filename)
@@ -203,7 +204,11 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
     else:
         model = MLP_sm(options = options, input_len = input_len)
 
-    if load_path is not None: model.load_state_dict(torch.load(f'{load_path}.state'))
+    if load_path is not None: 
+        print(f'loading model path: {load_path}.state')
+        model.load_state_dict(torch.load(f'{load_path}.state'))
+    else:
+        print('starting new model')
 
     model = model.to(device())
         

@@ -12,9 +12,9 @@ options = {
     'dropout': 50,
     'rebalanceto': 0.1,
     'n_rows': 'all',
-    'print_batches': 5000,
+    'print_batches': 2500,
     'network': 'md',
-    'num_splits': 50 if gcp() else 300
+    'num_splits': 50 if gcp() else 125
 }
 
 run_name = 'md-allrows-3e'
@@ -30,7 +30,7 @@ else:
     indir = 'out/train/'
     save_folder = 'out/net/'
 
-if not os.path.exists(f'{indir}/{run_name}.state'):
+if not os.path.exists(f'{save_folder}/{run_name}.state'):
 
     net, labels, scores = train(
         indir = indir,
@@ -47,7 +47,7 @@ elif useprior:
         options = options,
         print_batches = options['print_batches'],
         save_folder = save_folder,
-        model_load_path = f'{indir}/{run_name}',
+        model_load_path = f'{save_folder}/{run_name}',
         save_name = run_name
     )
 
