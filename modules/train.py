@@ -81,6 +81,10 @@ def train(
             for i, data in enumerate(loader, 0):
                 
                 imolecule_ids, iX, iy = data
+                
+                # sometimes 1 row comes through, which causes an error.
+                if iX.shape[0] <= 1: continue
+                
                 optimizer.zero_grad()
 
                 if not devicesprinted:

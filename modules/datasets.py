@@ -142,7 +142,7 @@ def get_loader(indir, mols = None, blocks = None, options = {}, submit = False, 
             mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index']), 
             blocks, targets, options
         ), 
-        batch_size = batch_size, shuffle = shuffle, num_workers = 0
+        batch_size = batch_size, shuffle = shuffle, num_workers = 0, drop_last = True
     )
 
 # def get_loader_multi(indir):
