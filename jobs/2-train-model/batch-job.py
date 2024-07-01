@@ -12,9 +12,9 @@ options = {
     'dropout': 50,
     'rebalanceto': 0.1,
     'n_rows': 'all',
-    'print_batches': 1000,
+    'print_batches': 5000,
     'network': 'md',
-    'num_splits': 60 if gcp() else 300
+    'num_splits': 50 if gcp() else 300
 }
 
 run_name = 'md-allrows-3e'

@@ -2,7 +2,7 @@ import torch, os, time, gc
 import torch.nn as nn
 import numpy as np
 import polars as pl
-from modules.utils import device, gcp
+from modules.utils import device, gcp, fileexists
 from modules.features import features
 from modules.datasets import get_loader
 from modules.nets import MLP_sm, MLP_md, MLP_lg
@@ -113,9 +113,14 @@ def train(
             del imols, loader
             gc.collect()
             if gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
+            net.to(idevice)
+            net.train()
         
         if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = gcp())
-        return net, labels, scores
+        net.to(idevice)
+        net.train()
+        
+    return net, labels, scores
     
 def run_val(loader, net, print_batches = 2000): 
 
@@ -202,16 +207,19 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
 
     model = model.to(device())
         
-    optimizer = torch.optim.Adam(
-        model.parameters(), 
-        lr = options['lr'], 
-        weight_decay = 1e-5,
-        amsgrad = True,
-        fused = gcp()
-    )
+    # optimizer = torch.optim.Adam(
+    #     model.parameters(), 
+    #     lr = options['lr'], 
+    #     weight_decay = 1e-5,
+    #     amsgrad = True,
+    #     fused = gcp()
+    # )
+    
+    optimizer = torch.optim.SGD(model.parameters(), lr=options['lr'], momentum=options['momentum'])
 
-    if load_path is not None and load_optimizer: 
-        optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
+    # if load_path is not None and load_optimizer and fileexists(f'{load_path}-opt.state'): 
+    #     print(f'loading optimizer {load_path}-opt.state')
+    #     optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
 
     return model, optimizer
 
