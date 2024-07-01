@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch, sys, math
 from modules.features import features
-from modules.utils import device
+from modules.utils import device, gcp
 import numpy as np
 import polars as pl
     

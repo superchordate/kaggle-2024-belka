@@ -62,6 +62,7 @@ def train(
         print(f'sampled to {options["n_rows"]/1000/1000:.1f}M rows.')
     
     print(f'training {save_name}')
+    devicesprinted = False
     for epoch in range(options['epochs']):
 
         molct = 0
@@ -82,7 +83,9 @@ def train(
                 imolecule_ids, iX, iy = data
                 optimizer.zero_grad()
 
-                # print(f'iX: {iX.device}, iy: {iy["sEH"].device}, net: {next(net.parameters()).device}')
+                if not devicesprinted:
+                    print(f'iX: {iX.type()} {iX.device}, iy: {iy["sEH"].type()} {iy["sEH"].device}, net: {next(net.parameters()).device}')
+                    devicesprinted = True
 
                 outputs = net(iX)
                 
@@ -111,7 +114,7 @@ def train(
             gc.collect()
             if gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
         
-        save_model(net, save_folder, save_name, verbose = gcp())
+        if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = gcp())
         return net, labels, scores
     
 def run_val(loader, net, print_batches = 2000): 
@@ -172,7 +175,7 @@ def save_model(model, optimizer, folder, name, verbose = True):
     model = model.train()
 
 # https://pytorch.org/tutorials/beginner/saving_loading_models.html
-def get_model_optimizer(options, mols = None, blocks = None, load_path = None):
+def get_model_optimizer(options, mols = None, blocks = None, load_path = None, load_optimizer = True):
 
     if load_path is not None: print(f'loading model path: {load_path}')
 
@@ -196,6 +199,8 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None):
         model = MLP_sm(options = options, input_len = input_len)
 
     if load_path is not None: model.load_state_dict(torch.load(f'{load_path}.state'))
+
+    model = model.to(device())
         
     optimizer = torch.optim.Adam(
         model.parameters(), 
@@ -205,7 +210,8 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None):
         fused = gcp()
     )
 
-    if load_path is not None: optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
+    if load_path is not None and load_optimizer: 
+        optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
 
     return model, optimizer
 

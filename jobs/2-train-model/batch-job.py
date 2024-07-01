@@ -14,7 +14,7 @@ options = {
     'n_rows': 'all',
     'print_batches': 1000,
     'network': 'md',
-    'num_splits': 100 if gcp() else 300
+    'num_splits': 60 if gcp() else 300
 }
 
 run_name = 'md-allrows-3e'
@@ -30,7 +30,7 @@ else:
     indir = 'out/train/'
     save_folder = 'out/net/'
 
-if not os.path.exists(f'{indir}/{run_name}.torch'):
+if not os.path.exists(f'{indir}/{run_name}.state'):
 
     net, labels, scores = train(
         indir = indir,
