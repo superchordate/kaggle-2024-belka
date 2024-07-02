@@ -56,7 +56,7 @@ def train(
     if options['n_rows'] == 'all':
         mols = mols.with_columns(pl.Series('group', np.random.choice(range(options['num_splits']), mols.shape[0])))
         mols = mols.partition_by('group', include_key = False)
-        print(f'split mols to {options["num_splits"]} random splits for processing.')
+        print(f'split mols to {len(mols)} random splits for processing.')
     else:
         mols = [mols.sample(options['n_rows'])]
         print(f'sampled to {options["n_rows"]/1000/1000:.1f}M rows.')
@@ -69,7 +69,7 @@ def train(
         for imols in mols:
 
             molct += 1
-            print(f'epoch {epoch + 1} split {molct} of {options["num_splits"]}')
+            print(f'epoch {epoch + 1} split {molct} of {len(mols)}')
             
             loader = get_loader(indir = '', mols = imols, blocks = blocks, options = options)
             print(f'{len(loader):,.0f} batches')
@@ -87,9 +87,9 @@ def train(
                 
                 optimizer.zero_grad()
 
-                if not devicesprinted:
-                    print(f'iX: {iX.type()} {iX.device}, iy: {iy["sEH"].type()} {iy["sEH"].device}, net: {next(net.parameters()).device}')
-                    devicesprinted = True
+                # if not devicesprinted:
+                #     print(f'iX: {iX.type()} {iX.device}, iy: {iy["sEH"].type()} {iy["sEH"].device}, net: {next(net.parameters()).device}')
+                #     devicesprinted = True
 
                 outputs = net(iX)
                 
@@ -108,11 +108,11 @@ def train(
 
                 if (i % print_batches == 0) and (i != 0):
                     print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
-                    start_time = time.time()
                     loss = 0.0
                     if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
                     torch.cuda.empty_cache()
-                    if gcp(): print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
+                    start_time = time.time()
+                    # if gcp(): print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
             
