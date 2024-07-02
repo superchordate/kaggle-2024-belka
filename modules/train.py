@@ -226,9 +226,9 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
     
     optimizer = torch.optim.SGD(model.parameters(), lr=options['lr'], momentum=options['momentum'])
 
-    # if load_path is not None and load_optimizer and fileexists(f'{load_path}-opt.state'): 
-    #     print(f'loading optimizer {load_path}-opt.state')
-    #     optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
+    if load_path is not None and load_optimizer and fileexists(f'{load_path}-opt.state'): 
+        print(f'loading optimizer {load_path}-opt.state')
+        optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
 
     return model, optimizer
 
