@@ -7,19 +7,13 @@ import polars as pl
 import torch, os
 
 options = {
-    'epochs': 3,
-    'train_batch_size': 100,
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 50,
-    'rebalanceto': 0.1,
-    'n_rows': 'all',
-    'print_batches': 1000,
-    'network': 'md',
-    'num_splits': 75 if gcp() else 300
+    'network': 'md'
 }
 
-run_name = 'md-allrows-3e'
+run_name = 'md-500Krows-1e-baseline'
 
 if gcp():
     os.system(f'gsutil cp gs://kaggle-417721/{modelfile}.state {modelfile}.state')
