@@ -26,7 +26,7 @@ class Dataset_Mols(Dataset):
                     targets_binds = targets.filter(pl.col(f'binds_{protein_name}'))['index', f'binds_{protein_name}']
                     current_pct = targets_binds.shape[0] / targets.shape[0]
                     duplicate_count = math.ceil(options['rebalanceto'] / current_pct)
-                    print(f'{protein_name} current: {current_pct:.3f}, repeating {duplicate_count}x to reach {options["rebalanceto"]:.2f}')
+                    # print(f'{protein_name} current: {current_pct:.3f}, repeating {duplicate_count}x to reach {options["rebalanceto"]:.2f}')
                     
                     indexes = []
                     for i in range(duplicate_count):
@@ -64,7 +64,7 @@ class Dataset_Mols(Dataset):
 
         self.mol_ids = mols['molecule_id']
         if not self.istest: self.targets = targets_torch            
-        print(f'index_map: {len(index_map)/1000/1000:.2f}M vs mols: {len(self.mol_ids)/1000/1000:.2f}M')
+        # print(f'index_map: {len(index_map)/1000/1000:.2f}M vs mols: {len(self.mol_ids)/1000/1000:.2f}M')
 
     def __len__(self):
         return len(self.index_map)
