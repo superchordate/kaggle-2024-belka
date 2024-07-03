@@ -21,7 +21,14 @@
         }
     ],
     "allocationPolicy": {
-        "location": {"allowedLocations": ["regions/us-central1"] }
+        "location": {"allowedLocations": ["regions/us-central1"] },
+        "instances": [
+            {
+                "policy": {
+                    "provisioningModel": "PREEMPTIBLE"
+                }
+            }
+        ]
     },
     "logsPolicy": {
         "destination": "CLOUD_LOGGING"
