@@ -37,6 +37,8 @@ molecule_ids, labels, scores = run_val(
     get_loader('test/' if gcp() else 'out/test/', options = options, submit = True), 
     net
 )
+
+print('build submission')
 del labels
 submission = []
 for protein_name in ['sEH', 'BRD4', 'HSA']:
@@ -76,3 +78,4 @@ else:
     submitfile = f'out/submit/submission-{datetime.today().strftime("%Y%m%d")}-{run_name}.parquet'
     submission.to_parquet(submitfile, index = False)
 
+print('done!')
