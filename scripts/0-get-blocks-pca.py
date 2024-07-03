@@ -43,22 +43,31 @@ for train_test in ['test', 'train']:
     del train_test, f, i, building_blocks, ct, filename, batch_size
 
 # run preprocessing on full data.
-blocks = pl.concat([blocks['train'], blocks['test']]).select(['smiles']).unique()
+thisfile = f'out/blocks-1-smiles.parquet'
+if fileexists(thisfile):
+    blocks = pl.read_parquet(thisfile)
+else:
+    blocks = pl.concat([blocks['train'], blocks['test']]).select(['smiles']).unique()
+    
+    blocks = blocks.with_row_index()
+    blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
+    
+    smiles_enum = pl.Enum(blocks['smiles'])
+    blocks = blocks.with_columns(pl.col('smiles').cast(smiles_enum))
+    blocks.sort('index').write_parquet(thisfile)
+del thisfile
 
-blocks = blocks.with_row_index()
-blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
-
-smiles_enum = pl.Enum(blocks['smiles'])
-blocks = blocks.with_columns(pl.col('smiles').cast(smiles_enum))
-blocks.sort('index').write_parquet(f'out/blocks-1-smiles.parquet')
-
-blocks = blocks_add_ecfp(blocks)
-blocks = blocks_add_onehot(blocks)
-blocks = blocks_add_descriptors(blocks)
-blocks = blocks_add_graph_embeddings(blocks)
-blocks = blocks_add_word_embeddings(blocks)
-
-blocks.sort('index').write_parquet(f'out/blocks-2-features.parquet')
+thisfile = f'out/blocks-2-features.parquet'
+if fileexists(thisfile):
+    blocks = pl.read_parquet(thisfile)
+else:
+    blocks = blocks_add_ecfp(blocks)
+    blocks = blocks_add_onehot(blocks)
+    blocks = blocks_add_descriptors(blocks)
+    blocks = blocks_add_graph_embeddings(blocks)
+    blocks = blocks_add_word_embeddings(blocks)
+    blocks.sort('index').write_parquet(thisfile)
+del thisfile
 
 # combine features
 features = blocks['ecfp'].list.concat(
