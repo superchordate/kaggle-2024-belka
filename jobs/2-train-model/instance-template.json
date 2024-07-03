@@ -25,9 +25,10 @@
             {
                 "installGpuDrivers": true,
                 "policy": {
+                    "provisioningModel": "PREEMPTIBLE",
                     "accelerators": [
                         {
-                            "type": "nvidia-l4",
+                            "type": "nvidia-tesla-p4",
                             "count": 1
                           }
                     ]
