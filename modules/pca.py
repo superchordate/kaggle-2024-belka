@@ -19,8 +19,8 @@ def get_pca(X, info_cutoff = 0.95, col_increment = None, verbose = 1):
     X = pipe.transform(X)
 
     # run the middle point to see if we should be running from full or not.
-    n_components = int(ncols/2)
-    if n_components < nrows:
+    n_components = int(np.min([nrows, ncols])/2)
+    if n_components > nrows:
         raise Exception(f'n_components [{n_components}] must be less than the number of rows [{nrows}]')    
     pca, explained_variance_ratio = fit_return_result(X, n_components)
     from_full = explained_variance_ratio > info_cutoff
@@ -38,7 +38,7 @@ def get_pca(X, info_cutoff = 0.95, col_increment = None, verbose = 1):
                 if explained_variance_ratio < info_cutoff:
                     break
                 else:
-                    if verbose > 1: print(f'cols: {n_components} explained: {round(explained_variance_ratio, 2)}')
+                    if verbose > 1: print(f'cols: {n_components} explained: {round(explained_variance_ratio, 3)}')
                     n_components = n_components - col_increment
                     last_pca = pca
                     

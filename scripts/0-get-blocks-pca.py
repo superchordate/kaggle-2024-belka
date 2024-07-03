@@ -2,7 +2,7 @@ import pyarrow.parquet as pq
 import polars as pl
 import numpy as np
 import warnings
-from modules.preprocessing import get_pca
+from modules.pca import get_pca
 from modules.utils import save1, fileremove, dircreate, fileexists
 from modules.features import blocks_add_ecfp, blocks_add_onehot, blocks_add_descriptors, blocks_add_graph_embeddings, blocks_add_word_embeddings
 
@@ -79,7 +79,7 @@ features = blocks['ecfp'].list.concat(
 features = np.vstack(features)
 
 # compress with pca.
-pcapipe = get_pca(features, info_cutoff = 0.90, from_full = False)
+pcapipe = get_pca(features, info_cutoff = 0.90, verbose = 2)
 features = pcapipe.transform(features)
 
 # compress to integers.
