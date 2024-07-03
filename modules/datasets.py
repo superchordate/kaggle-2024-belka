@@ -26,7 +26,7 @@ class Dataset_Mols(Dataset):
                     targets_binds = targets.filter(pl.col(f'binds_{protein_name}'))['index', f'binds_{protein_name}']
                     current_pct = targets_binds.shape[0] / targets.shape[0]
                     duplicate_count = math.ceil(options['rebalanceto'] / current_pct)
-                    # print(f'{protein_name} current: {current_pct:.3f}, repeating {duplicate_count}x to reach {options["rebalanceto"]:.2f}')
+                    print(f'{protein_name} current: {current_pct:.3f}, repeating {duplicate_count}x to reach {options["rebalanceto"]:.2f}')
                     
                     indexes = []
                     for i in range(duplicate_count):
@@ -37,12 +37,11 @@ class Dataset_Mols(Dataset):
                 index_map = np.concatenate(index_map) 
 
                 # add the ids that don't bind.
-                index_map = np.append(index_map, np.array(targets.filter(pl.col('index').is_in(index_map).not_())['index']))
+                index_map = np.append(index_map, np.array(targets.filter(pl.col('index').is_in(index_map).not_())['index']))                
 
             else:
-                index_map = np.array(range(targets.shape[0]))
 
-            self.index_map = np.array(targets['index'])
+                index_map = np.array(targets['index'])
 
             targets_torch = {}
             for protein_name in ['sEH', 'BRD4', 'HSA']:
@@ -52,9 +51,9 @@ class Dataset_Mols(Dataset):
                 targets_torch[protein_name] = targets_torch[protein_name].to(self.device)
         else:
             
-            self.index_map = np.array(range(mols.shape[0]))
+            index_map = np.array(range(mols.shape[0]))
             
-        self.index_map = [int(x) for x in self.index_map] # must be int for selection.
+        self.index_map = [int(x) for x in index_map] # must be int for selection.
 
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
 
@@ -64,7 +63,8 @@ class Dataset_Mols(Dataset):
         self.features = torch.from_numpy(self.features).float().to(self.device)
 
         self.mol_ids = mols['molecule_id']
-        if not self.istest: self.targets = targets_torch
+        if not self.istest: self.targets = targets_torch            
+        print(f'index_map: {len(index_map)/1000/1000:.2f}M vs mols: {len(self.mol_ids)/1000/1000:.2f}M')
 
     def __len__(self):
         return len(self.index_map)
