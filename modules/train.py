@@ -2,7 +2,7 @@ import torch, os, time, gc
 import torch.nn as nn
 import numpy as np
 import polars as pl
-from modules.utils import device, gcp, fileexists
+from modules.utils import device, gcp, fileexists, cloud
 from modules.features import features
 from modules.datasets import get_loader
 from modules.nets import MLP_sm, MLP_md, MLP_lg
@@ -19,16 +19,16 @@ def train(
         criterion = None
 ):  
     idevice = device()
-    if gcp(): print(idevice)
+    if cloud(): print(idevice)
 
     # load mols and blocks.
-    molpath = f'{indir}/mols.parquet' if not gcp() else 'mols.parquet'
+    molpath = f'{indir}/mols.parquet' if not cloud() else 'mols.parquet'
     print(f'loading {molpath}')
     mols = pl.read_parquet(
         molpath, 
         columns = ['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index', 'binds_sEH', 'binds_BRD4', 'binds_HSA']
     )
-    blockspath = f'out/blocks-3-pca.parquet' if not gcp() else 'blocks-3-pca.parquet'
+    blockspath = f'out/blocks-3-pca.parquet' if not cloud() else 'blocks-3-pca.parquet'
     blocks = pl.read_parquet(blockspath, columns = ['index', 'features_pca'])
 
     # get the network, optimizer, and criterion.
@@ -43,7 +43,7 @@ def train(
             lr = options['lr'], 
             weight_decay = 1e-5,
             amsgrad = True,
-            fused = gcp()
+            fused = idevice == 'cuda'
         )
 
     if not criterion: 
@@ -109,21 +109,21 @@ def train(
                 if (i % print_batches == 0) and (i != 0):
                     print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
                     loss = 0.0
-                    if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
+                    if not cloud(): save_model(net, optimizer, save_folder, save_name, verbose = False)
                     torch.cuda.empty_cache()
                     start_time = time.time()
-                    # if gcp(): print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
+                    # if idevice == 'cuda': print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
             
             del imols, loader
             gc.collect()
             torch.cuda.empty_cache()
-            if gcp(): save_model(net, optimizer, save_folder, save_name, verbose = False)
+            if cloud(): save_model(net, optimizer, save_folder, save_name, verbose = False)
             net.to(idevice)
             net.train()
         
-        if not gcp(): save_model(net, optimizer, save_folder, save_name, verbose = gcp())
+        if not cloud(): save_model(net, optimizer, save_folder, save_name, verbose = cloud())
         net.to(idevice)
         net.train()
         
@@ -161,7 +161,7 @@ def save_model(model, optimizer, folder, name, verbose = True):
 
     # JIT is preferred but has had issues.
     model = model.cpu().eval()
-    basepath = f'{folder}/{name}' if not gcp() else name
+    basepath = f'{folder}/{name}' if not cloud() else name
 
     # try:
 
@@ -221,7 +221,7 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
     #     lr = options['lr'], 
     #     weight_decay = 1e-5,
     #     amsgrad = True,
-    #     fused = gcp()
+    #     fused = device() == 'cuda'
     # )
     
     optimizer = torch.optim.SGD(model.parameters(), lr=options['lr'], momentum=options['momentum'])

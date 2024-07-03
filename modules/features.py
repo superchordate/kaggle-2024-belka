@@ -1,9 +1,9 @@
 import numpy as np
 import polars as pl
 import pandas as pd
-from modules.utils import gcp
+from modules.utils import cloud
 
-if not gcp():
+if not cloud():
 
     from rdkit import Chem
     from rdkit.Chem import AllChem, Descriptors

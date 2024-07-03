@@ -46,7 +46,13 @@ def device():
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def gcp():    
-    return platform.system() != 'Windows'
+    return (platform.system() != 'Windows') and (not os.path.exists('/kaggle/'))
+
+def kaggle():
+    return os.path.exists('/kaggle/')
+
+def cloud():
+    return gcp() or kaggle()
 
 def fileexists(x): 
     return os.path.exists(x)

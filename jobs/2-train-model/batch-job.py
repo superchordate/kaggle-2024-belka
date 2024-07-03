@@ -1,5 +1,5 @@
 from modules.train import train
-from modules.utils import gcp
+from modules.utils import gcp, kaggle
 import os, torch
 
 useprior = True
@@ -24,6 +24,9 @@ if gcp():
     os.system('gsutil cp gs://kaggle-417721/mols.parquet mols.parquet')
     os.system(f'gsutil cp gs://kaggle-417721/{run_name}.state {run_name}.state')
     os.system(f'gsutil cp gs://kaggle-417721/{run_name}-opt.state {run_name}-opt.state')
+    indir = '.' 
+    save_folder = '.'
+elif kaggle():
     indir = '.' 
     save_folder = '.'
 else:
