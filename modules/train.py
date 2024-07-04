@@ -124,7 +124,7 @@ def train(
                     outputs1 = net(iX1)                
                     loss1 = criterion1(outputs1['sEH'], iy['sEH'])
                     loss2 = criterion2(outputs1['BRD4'], iy['BRD4'])
-                    loss3 = criterion3(outputs1['HSA'], iy['HSA'])                    
+                    loss3 = criterion3(outputs1['HSA'], iy['HSA'])
                     iloss = loss1 + loss2 + loss3
 
                 iloss.backward()
@@ -186,22 +186,28 @@ def run_val(loader, net, options, print_batches = 2000):
     net = net.eval()
 
     with torch.no_grad():
+        
         scores = {'sEH': [], 'BRD4': [], 'HSA': []}
         labels = {'sEH': [], 'BRD4': [], 'HSA': []}
         molecule_ids = []
+        
         for i, data in enumerate(loader, 0):
             
             if options['network'] == 'siamese':
+                
                 imolecule_ids, iX1, iX2, iX3, iy = data
-                outputs = net(iX1, iX2, iX3)
+                outputs1, outputs2, outputs3 = net(iX1, iX2, iX3)
+                #score = 
+                
             else:
+                
                 imolecule_ids, iX1, iy = data
                 outputs = net(iX1)
             
-            for protein_name in outputs.keys():
-                if len(iy[protein_name]) > 0: # will be empty if this is a test set.
-                    labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
-                scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
+                for protein_name in outputs.keys():
+                    if len(iy[protein_name]) > 0: # will be empty if this is a test set.
+                        labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
+                    scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
 
             molecule_ids = np.append(molecule_ids, imolecule_ids)
             if (i % print_batches == 0) and (i != 0):

@@ -190,6 +190,7 @@ class Siamese(nn.Module):
 
     def forward_once(self, x):
         x = self.siamese(x)
+        x = self.out(x)
         x = x.view(x.size()[0], -1)
         return x
 

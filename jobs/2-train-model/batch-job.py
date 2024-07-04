@@ -13,14 +13,16 @@ options = {
     #'rebalanceto': 0.3,
     'n_rows': 50*1000,
     'print_batches': 500,
-    'network': 'siamese',
-    'protein': 'BRD4',
+    'network': 'sm',
+    # 'protein': 'BRD4',
     'num_splits': 3,
-    'early_stopping_rounds': 4
+    # 'early_stopping_rounds': 4
 }
 
-run_name = f'{options["network"]}-50K-{options["epochs"]}e-reb30f-drop50-pca90-es4'
-# os.remove(f'out/net/{run_name}.state')
+#run_name = f'{options["network"]}-{options["protein"]}-all-drop50-pca90'
+run_name = f'{options["network"]}-all-drop50-pca90'
+run_name = 'test'
+os.remove(f'out/net/{run_name}.state')
 
 # 1e done
 
