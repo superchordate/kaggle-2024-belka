@@ -5,15 +5,16 @@ from datetime import datetime
 import pandas as pd
 import polars as pl
 import torch, os
+import numpy as np
 
 options = {
     'lr': 0.001,
     'momentum': 0.9,
-    'dropout': 50,
+    'dropout': 0,
     'network': 'lg'
 }
 
-run_name = 'lg-all-5e-reb10-drop50-pca90'
+run_name = 'lg-all-3e-reb30f-drop50-pca95-es4'
 
 if gcp():
     os.system(f'gsutil cp gs://kaggle-417721/{modelfile}.state {modelfile}.state')
@@ -74,6 +75,7 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
     del isubmission, inputs, results, protein_name
 
 submission = pd.concat(submission).sort_values('id')
+submission['binds'] = np.round(submission['binds'], 3)
 
 if submission.shape[0] != 1674896:
     raise Exception(f'Submission must have 1674896 rows, found: {submission.shape[0]}')
