@@ -76,6 +76,7 @@ def train(
         del mols_binds_indexes, current_pct, duplicate_count, i, index
         print(f'now {mols.shape[0]/1000/1000:.1f}M rows.')
     
+    print(f'{mols.shape[0]/1000/1000:.1f}M rows')
     mols = mols.with_columns(pl.Series('group', np.random.choice(range(options['num_splits']), mols.shape[0])))
     mols = mols.partition_by('group', include_key = False)
     print(f'split mols to {len(mols)} random splits for processing.')
@@ -231,7 +232,7 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
 
     # elif '.tweights' in filename:
         
-    input_len = len(features(mols[0,], blocks, options)[0])
+    input_len = len(features(mols[0,], blocks)[0])
     
     if options['network'] == 'lg':
         model = MLP_lg(options = options, input_len = input_len)

@@ -18,7 +18,7 @@ ct = 0
 dircreate('out/train/mols-features')
 for imols in mols:
     ct+=1
-    ifeatures = features(imols, blocks, {})
+    ifeatures = features(imols, blocks)
     imols = imols.with_columns(pl.Series('features', ifeatures))
     imols = imols.select(['molecule_id', 'binds_sEH', 'binds_BRD4', 'binds_HSA', 'features'])
     imols.write_parquet(f'out/train/mols-features/mols-features-{pad0(ct)}')

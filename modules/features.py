@@ -93,7 +93,7 @@ def blocks_add_descriptors(blocks):
         pl.Series('descrs', [getMolDescriptors(smiles) for smiles in blocks['smiles']])
     )
 
-def features(dt, blocks, options):
+def features(dt, blocks):
 
     blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
     idt = dt.join(blocks, left_on = 'buildingblock1_index', right_on = 'index', how = 'inner', suffix = '1') \
