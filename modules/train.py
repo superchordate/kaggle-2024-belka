@@ -82,6 +82,8 @@ def train(
     
     print(f'training {save_name}')
     devicesprinted = False
+    notimprovedct = 0
+    minloss = 9999999
     for epoch in range(options['epochs']):
 
         molct = 0
@@ -126,12 +128,23 @@ def train(
                     scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
 
                 if (i % print_batches == 0) and (i != 0):
-                    print(f'batch {i}, loss: {loss:.0f} {(time.time() - start_time)/60:.1f} mins')
-                    loss = 0.0
+                    print(f'batch {i}, loss: {loss:.2f} {(time.time() - start_time)/60:.1f} mins')
                     if not cloud(): save_model(net, optimizer, save_folder, save_name, verbose = False)
                     torch.cuda.empty_cache()
                     start_time = time.time()
                     # if idevice == 'cuda': print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
+
+                    if loss < minloss:
+                        minloss = loss
+                        notimprovedct = 0 
+                    else:
+                        notimprovedct += 1
+                        print(f'notimproved: {notimprovedct}')
+                        if notimprovedct >= options['early_stopping_rounds']:
+                            print(f'loss has not improved in {options["early_stopping_rounds"]} rounds, stopping.')
+                            save_model(net, optimizer, save_folder, save_name, verbose = True)
+                            return net, labels, scores
+                    loss = 0.0
 
                 del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
             

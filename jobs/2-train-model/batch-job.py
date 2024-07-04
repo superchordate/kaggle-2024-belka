@@ -2,22 +2,23 @@ from modules.train import train
 from modules.utils import gcp, kaggle
 import os, torch
 
-useprior = True
+useprior = False
 
 options = {
-    'epochs': 5,
-    'train_batch_size': 100,
+    'epochs': 3,
+    'train_batch_size': 32,
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 50,
-    # 'rebalanceto': 0.1,
+    'rebalanceto': 0.3,
     'n_rows': 'all',
     'print_batches': 2500,
     'network': 'lg',
-    'num_splits': 60
+    'num_splits': 125,
+    'early_stopping_rounds': 4
 }
 
-run_name = f'{options["network"]}-all-{options["epochs"]}e-rebno-drop50-pca95'
+run_name = f'{options["network"]}-all-{options["epochs"]}e-reb30f-drop50-pca95-es4'
 
 # 1e done
 
@@ -33,6 +34,7 @@ run_name = f'{options["network"]}-all-{options["epochs"]}e-rebno-drop50-pca95'
 # rebalance10 dropout50 mom80 = 0.293
 # rebalance10 dropout50 pca99 = 0.28
 # rebalance10 dropout50 pca95 = 0.287
+# rebalance10 dropout50 pca95 fixrebalance = 0.275
 
 # strategy 
 # lg model (3e has 0.43)
