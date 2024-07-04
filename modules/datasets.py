@@ -112,15 +112,16 @@ def get_loader(indir, mols = None, blocks = None, options = {}, submit = False, 
         print(f'read {mols.shape[0]/1000/1000:,.2f} M rows')
 
         # we must use the full blocks (not train/val) to have aligned indexes.
-        if cloud():
-            blockpath = 'blocks-3-pca.parquet'
-        else:
-            blockpath = 'out/blocks-3-pca.parquet'
-        print(f'blocks: {blockpath}')
-        blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
+        if blocks is None:
+            if cloud():
+                blockpath = 'blocks-3-pca.parquet'
+            else:
+                blockpath = 'out/blocks-3-pca.parquet'
+            print(f'blocks: {blockpath}')
+            blocks = pl.read_parquet(blockpath, columns = ['index', 'features_pca'])
         
     else: 
-        istest = False
+        istest = submit
         isval = False
         mols = mols.with_row_index()
 

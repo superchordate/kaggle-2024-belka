@@ -13,7 +13,7 @@ options = {
     'network': 'md'
 }
 
-run_name = 'md-500Krows-1e-baseline'
+run_name = 'md-500K-1e-reb10-drop50-pca99'
 
 if gcp():
     os.system(f'gsutil cp gs://kaggle-417721/{modelfile}.state {modelfile}.state')
@@ -22,22 +22,28 @@ if gcp():
     os.system('unzip test.zip')
     mols = pl.read_parquet('test/mols.parquet')
     blocks = pl.read_parquet('blocks-3-pca.parquet')
+    datafolder = 'test/'
+    load_path = run_name
 elif kaggle():
-    mols = pl.read_parquet('test/mols.parquet')
-    blocks = pl.read_parquet('blocks-3-pca.parquet')
+    mols = pl.read_parquet('/kaggle/input/belka-train-submit/test/test/mols.parquet')
+    blocks = pl.read_parquet('/kaggle/input/belka-train-submit/blocks-3-pca.parquet')
+    datafolder = '/kaggle/input/belka-train-submit/test/test/'
+    load_path = '/kaggle/input/belka-train-submit/' + run_name
 else:    
     mols = pl.read_parquet('out/test/mols.parquet')
     blocks = pl.read_parquet('out/blocks-3-pca.parquet')
+    datafolder = 'out/test/'
+    load_path = f'out/net/{run_name}'
 
 net, optimizer = get_model_optimizer(
     options, mols, blocks, 
-    load_path = run_name if cloud() else f'out/net/{run_name}', 
+    load_path = load_path, 
     load_optimizer = False
 )
 
 # run test to get the actual submission.
 molecule_ids, labels, scores = run_val(
-    get_loader('test/' if cloud() else 'out/test/', options = options, submit = True), 
+    get_loader(datafolder, mols = mols, blocks = blocks, options = options, submit = True), 
     net
 )
 
@@ -52,7 +58,7 @@ for protein_name in ['sEH', 'BRD4', 'HSA']:
     })).with_columns(pl.col('molecule_id').cast(pl.Float32))
     
     inputs = pl.read_parquet(
-        f'test/test-{protein_name}-idsonly.parquet' if cloud() else f'out/test/test-{protein_name}-idsonly.parquet',
+        f'{datafolder}/test-{protein_name}-idsonly.parquet',
     ).with_columns(pl.col('molecule_id').cast(pl.Float32))
     inputs = inputs.join(results, on = 'molecule_id', how = 'left')
     if inputs.null_count()['binds'][0] > 0:
@@ -73,7 +79,7 @@ if submission.shape[0] != 1674896:
     raise Exception(f'Submission must have 1674896 rows, found: {submission.shape[0]}')
 
 if cloud():
-    submitfile = f'submission-{datetime.today().strftime("%Y%m%d")}-{run_name}.parquet'
+    submitfile = f'{run_name}.parquet'
     submission.to_parquet(submitfile, index = False)
     if gcp():
         os.system(f'gsutil cp {submitfile} gs://kaggle-417721/{submitfile}')
