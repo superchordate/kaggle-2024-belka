@@ -15,4 +15,4 @@ train_train_mols_binds.shape[0] # 1.3M binds, I would like a ratio of 25% binds 
 
 reduced_mols = pl.concat([train_train_mols_binds, train_train_mols.sample(train_train_mols_binds.shape[0] * 3)])
 
-reduced_mols.write_parquet('out/train/train/mols-reduced.parquet')
+reduced_mols.write_parquet('out/train/train/mols.parquet')

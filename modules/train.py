@@ -5,7 +5,7 @@ import polars as pl
 from modules.utils import device, gcp, fileexists, cloud
 from modules.features import features
 from modules.datasets import get_loader
-from modules.nets import MLP_sm, MLP_md, MLP_lg
+from modules.nets import MLP_sm, MLP_md, MLP_lg, Siamese, ContrastiveLoss
    
 def train(
         indir, 
@@ -14,9 +14,7 @@ def train(
         options,
         print_batches = 2000,
         model_load_path = None, 
-        optimizer = None,
-        # criterion = nn.MSELoss()
-        criterion = None
+        optimizer = None
 ):  
     idevice = device()
     if cloud(): print(idevice)
@@ -46,7 +44,9 @@ def train(
             fused = idevice == 'cuda'
         )
 
-    if not criterion: 
+    if options['network'] == 'siamese': 
+        criterion1 = ContrastiveLoss().to(idevice)
+    else:
         criterion1 = nn.BCELoss().to(idevice)
         criterion2 = nn.BCELoss().to(idevice)
         criterion3 = nn.BCELoss().to(idevice)
@@ -76,7 +76,8 @@ def train(
         del mols_binds_indexes, current_pct, duplicate_count, i, index
         print(f'now {mols.shape[0]/1000/1000:.1f}M rows.')
     
-    print(f'{mols.shape[0]/1000/1000:.1f}M rows')
+    mols_binds_indexes = mols.filter(pl.col(f'binds_sEH') | pl.col(f'binds_BRD4') | pl.col(f'binds_HSA'))
+    print(f'{mols.shape[0]/1000/1000:.1f}M rows {mols_binds_indexes.shape[0]/mols.shape[0]:.3f} binds')
     mols = mols.with_columns(pl.Series('group', np.random.choice(range(options['num_splits']), mols.shape[0])))
     mols = mols.partition_by('group', include_key = False)
     print(f'split mols to {len(mols)} random splits for processing.')
@@ -101,32 +102,44 @@ def train(
             scores = {'sEH': [], 'BRD4': [], 'HSA': []}
             labels = {'sEH': [], 'BRD4': [], 'HSA': []}
             for i, data in enumerate(loader, 0):
-                
-                imolecule_ids, iX, iy = data
+            
+                if options['network'] == 'siamese':
+                    imolecule_ids, iX1, iX2, iX3, iy = data
+                else:
+                    imolecule_ids, iX1, iy = data
                 
                 # sometimes 1 row comes through, which causes an error.
-                if iX.shape[0] <= 1: continue
+                if iX1.shape[0] <= 1: continue
                 
                 optimizer.zero_grad()
 
                 # if not devicesprinted:
                 #     print(f'iX: {iX.type()} {iX.device}, iy: {iy["sEH"].type()} {iy["sEH"].device}, net: {next(net.parameters()).device}')
                 #     devicesprinted = True
+                
+                if options['network'] == 'siamese':
+                    outputs1, outputs2, outputs3 = net(iX1, iX2, iX3)
+                    iloss = criterion1(outputs1, outputs2, outputs3, iy[options['protein']])
+                else:
+                    outputs1 = net(iX1)                
+                    loss1 = criterion1(outputs1['sEH'], iy['sEH'])
+                    loss2 = criterion2(outputs1['BRD4'], iy['BRD4'])
+                    loss3 = criterion3(outputs1['HSA'], iy['HSA'])                    
+                    iloss = loss1 + loss2 + loss3
 
-                outputs = net(iX)
-                
-                loss1 = criterion1(outputs['sEH'], iy['sEH'])
-                loss2 = criterion2(outputs['BRD4'], iy['BRD4'])
-                loss3 = criterion3(outputs['HSA'], iy['HSA'])
-                
-                iloss = loss1 + loss2 + loss3
                 iloss.backward()
                 optimizer.step()
 
                 loss += float(iloss.cpu().item())
-                for protein_name in iy.keys():
+
+                doproteins = [options['protein']] if options['network'] == 'siamese' else iy.keys()
+                for protein_name in doproteins:
                     labels[protein_name] = np.append(labels[protein_name], iy[protein_name].cpu().tolist())
-                    scores[protein_name] = np.append(scores[protein_name], outputs[protein_name].cpu().tolist())
+                    if options['network'] == 'siamese':
+                        scores[protein_name] = np.append(scores[protein_name], outputs1.cpu().tolist())
+                    else:
+                        scores[protein_name] = np.append(scores[protein_name], outputs1[protein_name].cpu().tolist())
+                del doproteins
 
                 if (i % print_batches == 0) and (i != 0):
                     print(f'batch {i}, loss: {loss:.2f} {(time.time() - start_time)/60:.1f} mins')
@@ -147,7 +160,11 @@ def train(
                             return net, labels, scores
                     loss = 0.0
 
-                del i, data, imolecule_ids, iX, iy, outputs, loss1, loss2, loss3, iloss
+                del i, data, imolecule_ids, iX1, iy, outputs1, iloss
+                if options['network'] == 'siamese': 
+                    del iX2, iX3, outputs2, outputs3
+                else:
+                    del loss1, loss2, loss3
             
             del imols, loader
             gc.collect()
@@ -162,7 +179,7 @@ def train(
         
     return net, labels, scores
     
-def run_val(loader, net, print_batches = 2000): 
+def run_val(loader, net, options, print_batches = 2000): 
 
     print(f'{len(loader)} batches')
 
@@ -174,8 +191,12 @@ def run_val(loader, net, print_batches = 2000):
         molecule_ids = []
         for i, data in enumerate(loader, 0):
             
-            imolecule_ids, iX, iy = data
-            outputs = net(iX)
+            if options['network'] == 'siamese':
+                imolecule_ids, iX1, iX2, iX3, iy = data
+                outputs = net(iX1, iX2, iX3)
+            else:
+                imolecule_ids, iX1, iy = data
+                outputs = net(iX1)
             
             for protein_name in outputs.keys():
                 if len(iy[protein_name]) > 0: # will be empty if this is a test set.
@@ -185,7 +206,8 @@ def run_val(loader, net, print_batches = 2000):
             molecule_ids = np.append(molecule_ids, imolecule_ids)
             if (i % print_batches == 0) and (i != 0):
                 print(f'batch {i}')
-            del i, data, imolecule_ids, iX, iy, outputs
+            del i, data, imolecule_ids, iX1, iy, outputs
+            if options['network'] == 'siamese': del iX2, iX3
             
     return molecule_ids, labels, scores
 
@@ -231,8 +253,10 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
     #     model = torch.load(filename)
 
     # elif '.tweights' in filename:
-        
-    input_len = len(features(mols[0,], blocks)[0])
+    if options['network'] == 'siamese':
+        input_len = len(features(mols[0,], blocks, options)[0][0])
+    else:
+        input_len = len(features(mols[0,], blocks, options)[0])
     
     if options['network'] == 'lg':
         model = MLP_lg(options = options, input_len = input_len)
@@ -240,6 +264,8 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
         model = MLP_md(options = options, input_len = input_len)
     elif options['network'] == 'sm':
         model = MLP_sm(options = options, input_len = input_len)
+    elif options['network'] == 'siamese':
+        model = Siamese(options = options, input_len = input_len)
     else:
         raise ValueError('network must be lg, md, or sm ({options["network"]})')
 

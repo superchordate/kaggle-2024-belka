@@ -31,34 +31,30 @@ train_val_blocks.sort('index').write_parquet(f'out/train/val/blocks-1-smiles.par
 train_val_distinct_blocks = train_val_blocks
 train_val_distinct_blocks.write_parquet('out/train/val/train_val_distinct_blocks.parquet')
 
-train_val_blocks = pl.concat([train_val_distinct_blocks, train_train_blocks.sample(train_val_blocks.shape[0])])
-
-# now we need to split the molecules between train_train and train_val.
-# let's take val out and the leftover will be train.
-# we need to take any mols with blocks from the val-distinct blocks.
+# start with train_val being mols that included nonshared blocks.
 train_mols = pl.read_parquet('out/train/mols.parquet')
 train_val_mols = train_mols.filter(
-    pl.col('buildingblock1_index').is_in(train_val_distinct_blocks['index']) |    
-    pl.col('buildingblock2_index').is_in(train_val_distinct_blocks['index']) |
-    pl.col('buildingblock3_index').is_in(train_val_distinct_blocks['index'])
+    pl.col('buildingblock1_index').is_in(train_val_blocks['index']) |
+    pl.col('buildingblock2_index').is_in(train_val_blocks['index']) |   
+    pl.col('buildingblock3_index').is_in(train_val_blocks['index'])
 )
-train_train_mols = train_mols.filter(
-    pl.col('buildingblock1_index').is_in(train_val_distinct_blocks['index']).not_() &    
-    pl.col('buildingblock2_index').is_in(train_val_distinct_blocks['index']).not_() &    
-    pl.col('buildingblock3_index').is_in(train_val_distinct_blocks['index']).not_()
-) 
+train_mols = train_mols.join(train_val_mols, on = 'molecule_id', how = 'anti')
 
-# we are now at 16% data going to val, with 48% of train val blocks being unique to val.
-# 46% would be better (to match test) but this will do for now.
-train_val_mols.shape[0] / (train_val_mols.shape[0] + train_train_mols.shape[0])
+#! nevermind
+# now add the same number of rows from training to try for a 50/50 mix.
+# train_val_mols = pl.concat([train_val_mols, train_mols.sample(train_val_mols.shape[0])])
+# train_mols = train_mols.join(train_val_mols, on = 'molecule_id', how = 'anti')
+
+# we are now at 15% data going to val, with 48% of train val blocks being unique to val.
+print(f'{train_val_mols.shape[0] / (train_val_mols.shape[0] + train_mols.shape[0]):.2f} data goes to val.')
 train_val_mols_blocks = np.unique(np.concatenate([
     train_val_mols['buildingblock1_index'],
     train_val_mols['buildingblock2_index'],
     train_val_mols['buildingblock3_index'],
 ]))
-1 - np.mean(np.isin(train_val_mols_blocks, train_blocks['index']))
+print(f'{1 - np.mean(np.isin(train_val_mols_blocks, train_blocks["index"])):.2f} val blocks are unique to val.')
 
 # cool - save the final mols.
-train_train_mols.write_parquet('out/train/train/mols.parquet')
+train_mols.write_parquet('out/train/train/mols.parquet')
 train_val_mols.write_parquet('out/train/val/mols.parquet')
 

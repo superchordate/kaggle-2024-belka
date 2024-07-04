@@ -12,12 +12,14 @@ options = {
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 0,
-    'network': 'md'
+    'network': 'sm'
 }
 
-run_name = 'md-500K-1e-reb30f-drop50-pca90-es4'
+run_name = 'sm-15K-1e-reb30f-drop50-pca90-es4'
 
-mols = pl.read_parquet('out/train/val/mols.parquet').sample(500*1000)
+testlen = pl.read_parquet('out/test/mols.parquet').shape[0]
+testlen = 50*1000
+mols = pl.read_parquet('out/train/val/mols.parquet').sample(testlen)
 blocks = pl.read_parquet('out/blocks-3-pca.parquet')
 
 datafolder = 'out/train/val/'
@@ -31,7 +33,7 @@ net, optimizer = get_model_optimizer(
 
 molecule_ids, labels, scores = run_val(
     get_loader(datafolder, mols = mols, blocks = blocks, options = options), 
-    net, options
+    net, options, print_batches = 500
 )
 
 train_val_distinct_blocks = pl.read_parquet('out/train/val/train_val_distinct_blocks.parquet')
@@ -40,6 +42,8 @@ mols_with_nonshared = mols.filter(
     pl.col('buildingblock2_index').is_in(train_val_distinct_blocks['index']) |
     pl.col('buildingblock3_index').is_in(train_val_distinct_blocks['index'])
 )['molecule_id']
+
+mols.filter(pl.col('molecule_id').is_in(mols_with_nonshared).not_())
 
 val_data = []
 for protein_name in ['sEH', 'BRD4', 'HSA']:   
@@ -58,5 +62,4 @@ solution = val_data[['id', 'protein_name', 'binds', 'split_group']]
 submission = val_data[['id', 'binds_predict']].rename({'binds_predict': 'binds'})
 expected_score = kaggle_score(solution, submission, "id")
 print(f'expected score: {expected_score :.3f}')
-
 

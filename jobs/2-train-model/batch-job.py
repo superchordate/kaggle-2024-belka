@@ -11,14 +11,16 @@ options = {
     'momentum': 0.9,
     'dropout': 50,
     #'rebalanceto': 0.3,
-    'n_rows': 500*1000,
-    'print_batches': 2500,
-    'network': 'md',
+    'n_rows': 50*1000,
+    'print_batches': 500,
+    'network': 'siamese',
+    'protein': 'BRD4',
     'num_splits': 3,
     'early_stopping_rounds': 4
 }
 
-run_name = f'{options["network"]}-500K-{options["epochs"]}e-reb30f-drop50-pca90-es4'
+run_name = f'{options["network"]}-50K-{options["epochs"]}e-reb30f-drop50-pca90-es4'
+# os.remove(f'out/net/{run_name}.state')
 
 # 1e done
 

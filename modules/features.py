@@ -18,6 +18,23 @@ if not cloud():
     w2v_model = word2vec.Word2Vec.load('data/model_300dim.pkl')
     graph_embed_model = Graph2Vec()
 
+def features(dt, blocks, options):
+
+    blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
+    idt = dt.join(blocks, left_on = 'buildingblock1_index', right_on = 'index', how = 'inner', suffix = '1') \
+        .join(blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner', suffix = '2') \
+        .join(blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner', suffix = '3')
+
+    if options['network'] == 'siamese':
+        features = [np.vstack(np.array(idt[x])) for x in ['features_pca', 'features_pca2', 'features_pca3']]
+        return features
+    else:
+        features = idt['features_pca'].list.concat(
+            idt['features_pca2'].list.concat(
+                idt['features_pca3']
+        ))
+        return np.vstack(features)
+
 def ecfp(smile):
     molecule = Chem.MolFromSmiles(smile)
     if molecule is None:
@@ -92,20 +109,6 @@ def blocks_add_descriptors(blocks):
     return blocks.with_columns(
         pl.Series('descrs', [getMolDescriptors(smiles) for smiles in blocks['smiles']])
     )
-
-def features(dt, blocks):
-
-    blocks = blocks.with_columns(pl.col('index').cast(pl.UInt16))
-    idt = dt.join(blocks, left_on = 'buildingblock1_index', right_on = 'index', how = 'inner', suffix = '1') \
-        .join(blocks, left_on = 'buildingblock2_index', right_on = 'index', how = 'inner', suffix = '2') \
-        .join(blocks, left_on = 'buildingblock3_index', right_on = 'index', how = 'inner', suffix = '3')
-
-    features = idt['features_pca'].list.concat(
-        idt['features_pca2'].list.concat(
-            idt['features_pca3']
-    ))
-
-    return(np.vstack(features))
 
 # https://towardsdatascience.com/basic-molecular-representation-for-machine-learning-b6be52e9ff76
 # download from https://github.com/samoturk/mol2vec/blob/master/examples/models/model_300dim.pkl.

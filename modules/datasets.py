@@ -13,6 +13,7 @@ class Dataset_Mols(Dataset):
         self.istest = not isinstance(targets, pl.DataFrame)
         self.device = device()
         self.options = options
+        print(f'{mols.shape[0]/1000/1000:,.2f} M rows')
         
         if not self.istest:
 
@@ -25,9 +26,16 @@ class Dataset_Mols(Dataset):
 
         mols = mols.select(['molecule_id', 'buildingblock1_index', 'buildingblock2_index', 'buildingblock3_index'])
 
-        self.features = features(mols, blocks)
+        self.features = features(mols, blocks, options)
         print(f'features size: {sys.getsizeof(self.features)/1024/1024/1024:.2f} GB')
-        self.features = torch.from_numpy(self.features).float().to(self.device)
+        if options['network'] == 'siamese':
+            self.features = [
+                torch.from_numpy(self.features[0]).float().to(self.device),
+                torch.from_numpy(self.features[1]).float().to(self.device),
+                torch.from_numpy(self.features[2]).float().to(self.device)
+            ]
+        else:
+            self.features = torch.from_numpy(self.features).float().to(self.device)
 
         self.mol_ids = mols['molecule_id']
         if not self.istest: self.targets = targets_torch
@@ -48,8 +56,10 @@ class Dataset_Mols(Dataset):
         else:
             
             iy = {'sEH': [], 'BRD4': [], 'HSA': []}
-    
-        return self.mol_ids[idx], self.features[idx], iy
+        if self.options['network'] == 'siamese':
+            return self.mol_ids[idx], self.features[0][idx], self.features[1][idx], self.features[2][idx], iy
+        else:
+            return self.mol_ids[idx], self.features[idx], iy
             
 
 def get_loader(indir, mols = None, blocks = None, options = {}, submit = False, checktrain = False):
@@ -91,15 +101,15 @@ def get_loader(indir, mols = None, blocks = None, options = {}, submit = False, 
 
     if istest:
         targets = None
-        batch_size = 5*1000
+        batch_size = 1000
         shuffle = False
     elif isval:
         targets = mols.select(['index', 'binds_sEH', 'binds_BRD4', 'binds_HSA'])
-        batch_size = 5*1000
+        batch_size = 1000
         shuffle = False
     else:
         targets = mols.select(['index', 'binds_sEH', 'binds_BRD4', 'binds_HSA'])
-        batch_size = options['train_batch_size']
+        batch_size = options['train_batch_size'] if 'train_batch_size' in options else 500
         shuffle = True
     
     return DataLoader(

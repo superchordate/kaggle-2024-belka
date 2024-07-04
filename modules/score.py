@@ -54,6 +54,7 @@ def kaggle_score(solution: pd.DataFrame, submission: pd.DataFrame, row_id_column
                     solution.loc[select, target].values,
                     submission.loc[select].values
                 )
+                print(f'{protein_name} {split_group} {score:.3f}')
                 scores.append(score)
 
     return np.mean(scores)
