@@ -5,20 +5,20 @@ import os, torch
 useprior = False
 
 options = {
-    'epochs': 3,
+    'epochs': 1,
     'train_batch_size': 32,
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 50,
-    'rebalanceto': 0.3,
-    'n_rows': 'all',
+    #'rebalanceto': 0.3,
+    'n_rows': 1000*1000,
     'print_batches': 2500,
-    'network': 'lg',
-    'num_splits': 125,
+    'network': 'md',
+    'num_splits': 3,
     'early_stopping_rounds': 4
 }
 
-run_name = f'{options["network"]}-all-{options["epochs"]}e-reb30f-drop50-pca95-es4'
+run_name = f'{options["network"]}-500K-{options["epochs"]}e-reb30f-drop50-pca90-es4'
 
 # 1e done
 
@@ -53,7 +53,7 @@ elif kaggle():
     indir = '.' 
     save_folder = '.'
 else:
-    indir = 'out/train/'
+    indir = 'out/train/train/'
     save_folder = 'out/net/'
 
 if not os.path.exists(f'{save_folder}/{run_name}.state'):
