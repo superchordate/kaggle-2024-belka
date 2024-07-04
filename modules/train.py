@@ -205,8 +205,10 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
         model = MLP_lg(options = options, input_len = input_len)
     elif options['network'] == 'md':
         model = MLP_md(options = options, input_len = input_len)
-    else:
+    elif options['network'] == 'sm':
         model = MLP_sm(options = options, input_len = input_len)
+    else:
+        raise ValueError('network must be lg, md, or sm ({options["network"]})')
 
     if load_path is not None: 
         print(f'loading model path: {load_path}.state')
