@@ -1,4 +1,4 @@
-import torch, os, time, gc
+import torch, os, time, gc, math
 import torch.nn as nn
 import numpy as np
 import polars as pl
@@ -53,13 +53,32 @@ def train(
         #criterion = nn.CrossEntropyLoss().to(idevice)
 
     # the data is too large to fit in memory, so we need to load it in batches.
-    if options['n_rows'] == 'all':
-        mols = mols.with_columns(pl.Series('group', np.random.choice(range(options['num_splits']), mols.shape[0])))
-        mols = mols.partition_by('group', include_key = False)
-        print(f'split mols to {len(mols)} random splits for processing.')
-    else:
-        mols = [mols.sample(options['n_rows'])]
-        print(f'sampled to {options["n_rows"]/1000/1000:.1f}M rows.')
+    if options['n_rows'] != 'all':
+        mols = mols.sample(options['n_rows'])
+        print(f'sampled to {mols.shape[0]/1000/1000:.1f}M rows.')
+
+    if 'rebalanceto' in options:
+
+        # duplicate molecule ids that bind, to get the desired percentage.
+        mols_binds_indexes = mols.filter(
+            pl.col(f'binds_sEH') | pl.col(f'binds_BRD4') | pl.col(f'binds_HSA')
+        )
+        current_pct = mols_binds_indexes.shape[0] / mols.shape[0]
+        duplicate_count = math.ceil(options['rebalanceto'] / current_pct)
+        print(f'rebalance: current {current_pct:.3f}, repeating {duplicate_count}x to reach {options["rebalanceto"]:.2f}')
+        
+        for i in range(duplicate_count):
+            mols = pl.concat([mols_binds_indexes, mols])
+
+        # shuffle the order so we don't have all the binding targets at the front. 
+        index = np.random.permutation(np.array(range(mols.shape[0])))
+        mols = mols.with_columns(pl.Series('index', index)).sort('index').drop('index')
+        del mols_binds_indexes, current_pct, duplicate_count, i, index
+        print(f'now {mols.shape[0]/1000/1000:.1f}M rows.')
+    
+    mols = mols.with_columns(pl.Series('group', np.random.choice(range(options['num_splits']), mols.shape[0])))
+    mols = mols.partition_by('group', include_key = False)
+    print(f'split mols to {len(mols)} random splits for processing.')
     
     print(f'training {save_name}')
     devicesprinted = False
