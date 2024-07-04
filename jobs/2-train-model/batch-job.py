@@ -5,19 +5,40 @@ import os, torch
 useprior = True
 
 options = {
-    'epochs': 3,
+    'epochs': 5,
     'train_batch_size': 100,
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 50,
-    'rebalanceto': 0.1,
+    # 'rebalanceto': 0.1,
     'n_rows': 'all',
     'print_batches': 2500,
-    'network': 'md',
-    'num_splits': 50 if gcp() else 125
+    'network': 'lg',
+    'num_splits': 60
 }
 
-run_name = 'md-allrows-3e'
+run_name = f'{options["network"]}-all-{options["epochs"]}e-rebno-drop50-pca95'
+
+# 1e done
+
+# adam
+# loss rate
+# pca 95
+# batch size
+
+# baseline md 500K 1e rebalance0 dropout50 pca90 = 0.174
+# rebalance10 dropout50 = 0.298
+# rebalance25 dropout50 = 0.293
+# rebalance10 dropout25 = 0.28
+# rebalance10 dropout50 mom80 = 0.293
+# rebalance10 dropout50 pca99 = 0.28
+# rebalance10 dropout50 pca95 = 0.287
+
+# strategy 
+# lg model (3e has 0.43)
+# rebalance10 
+# dropout50
+# pca90
 
 if gcp():
     os.system('gsutil cp gs://kaggle-417721/blocks-3-pca.parquet blocks-3-pca.parquet')

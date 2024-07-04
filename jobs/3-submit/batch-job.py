@@ -10,10 +10,10 @@ options = {
     'lr': 0.001,
     'momentum': 0.9,
     'dropout': 50,
-    'network': 'md'
+    'network': 'lg'
 }
 
-run_name = 'md-500K-1e-reb10-drop50-pca99'
+run_name = 'lg-all-5e-reb10-drop50-pca90'
 
 if gcp():
     os.system(f'gsutil cp gs://kaggle-417721/{modelfile}.state {modelfile}.state')

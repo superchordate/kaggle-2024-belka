@@ -28,7 +28,7 @@
                     "provisioningModel": "PREEMPTIBLE",
                     "accelerators": [
                         {
-                            "type": "nvidia-tesla-p4",
+                            "type": "nvidia-l4",
                             "count": 1
                           }
                     ]
