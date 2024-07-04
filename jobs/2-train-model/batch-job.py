@@ -11,7 +11,7 @@ options = {
     'momentum': 0.9,
     'dropout': 50,
     #'rebalanceto': 0.3,
-    'n_rows': 1000*1000,
+    'n_rows': 500*1000,
     'print_batches': 2500,
     'network': 'md',
     'num_splits': 3,

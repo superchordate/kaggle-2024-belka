@@ -9,28 +9,26 @@ from modules.utils import save1, load1, dircreate
 blocks = pl.read_parquet('out/blocks-3-pca.parquet')
 
 mols_test = pl.read_parquet('out/test/mols.parquet')
-pipe = get_pca(
-    features(mols_test.sample(50*1000), blocks),
-    info_cutoff = 0.90, verbose = 2
-)
-save1(pipe, 'out/mols-pca.pkl')
+# pipe = get_pca(
+#     features(mols_test.sample(50*1000), blocks),
+#     info_cutoff = 0.90, verbose = 2
+# )
+# save1(pipe, 'out/mols-pca.pkl')
 pipe = load1('out/mols-pca.pkl')
 
-# apply PCA and save. 
-test_features = features(mols_test, blocks)
-mols_test = mols_test.with_columns(pl.Series('features_pca', pipe.transform(test_features)))
-mols_test.select(['molecule_id', 'features_pca']).write_parquet('out/mols-features-pca.parquet')
+# add features and save.
+mols_test = mols_test.with_columns(pl.Series('features', features(mols_test, blocks)))
+mols_test.select(['molecule_id', 'features']).write_parquet('out/test/mols-2-features.parquet')
+
+# mols_test.select(['molecule_id', 'features_pca']).write_parquet('out/mols-features-pca.parquet')
 
 # now for train and val. 
 for train_val in ['train', 'val']:
     imols = pl.read_parquet(f'out/train/{train_val}/mols.parquet')
-    ifeatures = features(imols, blocks)
-    imols = imols.with_columns(pl.Series('features_pca', pipe.transform(ifeatures)))
-    imols.select(['molecule_id', 'features_pca']).write_parquet(f'out/train/{train_val}/mols-features-pca.parquet')
+    ifeatures = 
+    imols = imols.with_columns(pl.Series('features', features(imols, blocks)))
+    imols.select(['molecule_id', 'features']).write_parquet(f'out/train/{train_val}/mols-2-features.parquet')
     del imols, ifeatures, train_val
-
-
-
 
 
 # apply PCA to test mols.
