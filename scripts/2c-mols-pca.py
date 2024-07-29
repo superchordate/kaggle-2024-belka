@@ -4,7 +4,7 @@ import numpy as np
 from modules.pca import get_pca
 from modules.utils import save1, load1, dircreate
 
-options = {'network': 'md'}
+options = {'network': 'lg'}
 
 # use the test records for PCA.
 # this will orient us towards a high score, and reduce memory usage.
@@ -25,11 +25,17 @@ mols_test.select(['molecule_id', 'features']).write_parquet('out/test/mols-2-fea
 # mols_test.select(['molecule_id', 'features_pca']).write_parquet('out/mols-features-pca.parquet')
 
 # now for train and val. 
-for train_val in ['train', 'val']:
-    imols = pl.read_parquet(f'out/train/{train_val}/mols.parquet')
-    imols = imols.with_columns(pl.Series('features', features(imols, blocks, options)))
-    imols.select(['molecule_id', 'features']).write_parquet(f'out/train/{train_val}/mols-2-features.parquet')
-    del imols, train_val
+# for train_val in ['train', 'val']:
+#     print(train_val)
+#     imols = pl.read_parquet(f'out/train/{train_val}/mols.parquet')
+#     imols = imols.with_columns(pl.Series('features', features(imols, blocks, options)))
+#     imols.select(['molecule_id', 'features']).write_parquet(f'out/train/{train_val}/mols-2-features.parquet')
+#     del imols, train_val
+
+print('train')
+imols = pl.read_parquet(f'out/train/mols.parquet')
+imols = imols.with_columns(pl.Series('features', features(imols, blocks, options)))
+imols.select(['molecule_id', 'features']).write_parquet(f'out/train/{train_val}/mols-2-features.parquet')
 
 # apply PCA to test mols.
 # for train_test in ['train']:

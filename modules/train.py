@@ -84,8 +84,6 @@ def train(
     
     print(f'training {save_name}')
     devicesprinted = False
-    notimprovedct = 0
-    minloss = 9999999
     for epoch in range(options['epochs']):
 
         molct = 0
@@ -142,22 +140,48 @@ def train(
                 del doproteins
 
                 if (i % print_batches == 0) and (i != 0):
-                    print(f'batch {i}, loss: {loss:.2f} {(time.time() - start_time)/60:.1f} mins')
-                    if not cloud(): save_model(net, optimizer, save_folder, save_name, verbose = False)
-                    torch.cuda.empty_cache()
-                    start_time = time.time()
+
                     # if idevice == 'cuda': print(f'cuda memory allocated: {torch.cuda.memory_allocated(idevice)/1024/1024:.1f} GB')
 
-                    if loss < minloss:
-                        minloss = loss
-                        notimprovedct = 0 
-                    else:
-                        notimprovedct += 1
-                        print(f'notimproved: {notimprovedct}')
-                        if notimprovedct >= options['early_stopping_rounds']:
-                            print(f'loss has not improved in {options["early_stopping_rounds"]} rounds, stopping.')
-                            save_model(net, optimizer, save_folder, save_name, verbose = True)
-                            return net, labels, scores
+                    # now we take action based on whether loss has improved.
+                    # if we don't have a champion model, save the current one.
+                    # path_champion =  f'{save_folder}/{save_name}-champion'
+                    # path_candidate = f'{save_folder}/{save_name}-candidate'
+                    # if not os.path.exists(f'{path_champion}.state'):
+
+                    #     action = 'init'
+                    #     save_model(net, optimizer, save_folder, f'{save_name}-champion', verbose = False)
+                    #     minloss = loss
+
+                    # # if the loss has improved, promote the candidate to champion.
+                    # elif loss < minloss:
+                        
+                    #     action = 'promote-candidate'
+                    #     minloss = loss                                                
+                    #     if os.path.exists(f'{path_candidate}.state'):
+                    #         os.remove(f'{path_champion}.state')
+                    #         os.rename(f'{path_candidate}.state', f'{path_champion}.state')
+
+                    # # if it has not improved, delete the candidate and re-load the champion.
+                    # else:
+                    #     action = 'load-champion'
+                    #     if os.path.exists(f'{path_candidate}.state'):
+                    #         os.remove(f'{path_candidate}.state')
+                    #     net, optimizer = get_model_optimizer(options, mols = imols, blocks = blocks, load_path = path_champion)
+
+                    # save the new candidate.
+                    # save_model(net, optimizer, save_folder, f'{save_name}-candidate', verbose = False)
+                    
+                    save_model(net, optimizer, save_folder, save_name, verbose = False)
+                    net.to(idevice)
+                    net.train()
+
+                    # print(f'batch {i}, loss: {loss:.2f} {(time.time() - start_time)/60:.1f}, {action}')
+                    print(f'batch {i}, loss: {loss:.2f} {(time.time() - start_time)/60:.1f}')
+
+                    torch.cuda.empty_cache()
+                    start_time = time.time()
+
                     loss = 0.0
 
                 del i, data, imolecule_ids, iX1, iy, outputs1, iloss
@@ -169,9 +193,6 @@ def train(
             del imols, loader
             gc.collect()
             torch.cuda.empty_cache()
-            if cloud(): save_model(net, optimizer, save_folder, save_name, verbose = False)
-            net.to(idevice)
-            net.train()
         
         if not cloud(): save_model(net, optimizer, save_folder, save_name, verbose = cloud())
         net.to(idevice)
@@ -275,8 +296,8 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
     else:
         raise ValueError('network must be lg, md, or sm ({options["network"]})')
 
-    if load_path is not None: 
-        print(f'loading model path: {load_path}.state')
+    if load_path is not None and os.path.exists(f'{load_path}.state'): 
+        # print(f'loading model path: {load_path}.state')
         model.load_state_dict(torch.load(f'{load_path}.state'))
     else:
         print('starting new model')
@@ -294,7 +315,7 @@ def get_model_optimizer(options, mols = None, blocks = None, load_path = None, l
     optimizer = torch.optim.SGD(model.parameters(), lr=options['lr'], momentum=options['momentum'])
 
     if load_path is not None and load_optimizer and fileexists(f'{load_path}-opt.state'): 
-        print(f'loading optimizer {load_path}-opt.state')
+        # print(f'loading optimizer {load_path}-opt.state')
         optimizer.load_state_dict(torch.load(f'{load_path}-opt.state'))
 
     return model, optimizer

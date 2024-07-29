@@ -14,7 +14,7 @@ options = {
     'network': 'lg'
 }
 
-run_name = 'lg-all-3e-reb30f-drop50-pca95-es4'
+run_name = 'lg-e10-d50-b2500-checkval-champion'
 
 if gcp():
     os.system(f'gsutil cp gs://kaggle-417721/{modelfile}.state {modelfile}.state')
@@ -45,7 +45,7 @@ net, optimizer = get_model_optimizer(
 # run test to get the actual submission.
 molecule_ids, labels, scores = run_val(
     get_loader(datafolder, mols = mols, blocks = blocks, options = options, submit = True), 
-    net
+    net, options
 )
 
 print('build submission')

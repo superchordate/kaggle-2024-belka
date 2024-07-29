@@ -113,7 +113,7 @@ class MLP_lg(nn.Module):
 
         self.dropoutpct = options['dropout']/100
         self.input_len = input_len
-        print(f'input_len: {input_len}')
+        # print(f'input_len: {input_len}')
 
         self.fc1 = nn.Linear(self.input_len, self.input_len * 3)
         self.batchnorm1 = nn.BatchNorm1d(self.input_len * 3)

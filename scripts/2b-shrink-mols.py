@@ -5,7 +5,7 @@ import polars as pl
 
 def reducemols(path):
 
-    mols = pl.read_parquet(path)
+    mols = pl.read_parquet(f'{path}/mols-all.parquet')
     
     mols_binds = mols.filter(
         pl.col(f'binds_sEH') | pl.col(f'binds_BRD4') | pl.col(f'binds_HSA')
@@ -14,12 +14,12 @@ def reducemols(path):
     mols = mols.filter(
         (pl.col(f'binds_sEH') | pl.col(f'binds_BRD4') | pl.col(f'binds_HSA')).not_()
     )
-    #mols_binds.shape[0] # 1.3M binds, I would like a ratio of 25% binds so let's sample 3x this amount.
+    #mols_binds.shape[0] # 1.3M binds, I would like a ratio of 10% binds so let's sample 9x this amount.
     
-    reduced_mols = pl.concat([mols_binds, mols.sample(mols_binds.shape[0] * 3)])
+    reduced_mols = pl.concat([mols_binds, mols.sample(mols_binds.shape[0] * 9)])
     
-    reduced_mols.write_parquet(path)
+    reduced_mols.write_parquet(f'{path}/mols.parquet')
     
 
-#reducemols('out/train/train/mols.parquet')
-reducemols('out/train/mols.parquet')
+reducemols('out/train/train/')
+reducemols('out/train/')

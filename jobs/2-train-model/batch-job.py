@@ -2,27 +2,23 @@ from modules.train import train
 from modules.utils import gcp, kaggle
 import os, torch
 
-useprior = False
+useprior = True
 
 options = {
-    'epochs': 1,
+    'epochs': 2,
     'train_batch_size': 32,
-    'lr': 0.001,
+    'lr': 0.005,
     'momentum': 0.9,
     'dropout': 50,
-    #'rebalanceto': 0.3,
     'n_rows': 50*1000,
-    'print_batches': 500,
+    'print_batches': 100,
     'network': 'sm',
-    # 'protein': 'BRD4',
-    'num_splits': 3,
-    # 'early_stopping_rounds': 4
+    'num_splits': 3
+    
 }
 
-#run_name = f'{options["network"]}-{options["protein"]}-all-drop50-pca90'
-run_name = f'{options["network"]}-all-drop50-pca90'
 run_name = 'test'
-os.remove(f'out/net/{run_name}.state')
+os.remove(f'out/net/{run_name}-champion.state')
 
 # 1e done
 
@@ -60,26 +56,11 @@ else:
     indir = 'out/train/train/'
     save_folder = 'out/net/'
 
-if not os.path.exists(f'{save_folder}/{run_name}.state'):
-
-    net, labels, scores = train(
-        indir = indir,
-        options = options,
-        print_batches = options['print_batches'],
-        save_folder = save_folder,
-        save_name = run_name
-    )
-
-elif useprior:
-
-    net, labels, scores = train(
-        indir = indir,
-        options = options,
-        print_batches = options['print_batches'],
-        save_folder = save_folder,
-        model_load_path = f'{save_folder}/{run_name}',
-        save_name = run_name
-    )
-
-else:
-    raise Exception('Model already exists')
+net, labels, scores = train(
+    indir = indir,
+    options = options,
+    print_batches = options['print_batches'],
+    save_folder = save_folder,
+    model_load_path = f'{save_folder}/{run_name}-champion',
+    save_name = run_name
+)

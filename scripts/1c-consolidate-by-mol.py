@@ -49,7 +49,7 @@ mols = mols.select([
 
 # print(mols.columns)
 # print(mols.dtypes)
-mols.write_parquet(f'out/train/mols.parquet')
+mols.write_parquet(f'out/train/mols-all.parquet')
     
 # now we can replace protein files with simple files with id and row_index as molecule id.
 for protein_name in ['sEH', 'BRD4', 'HSA']:
@@ -97,4 +97,4 @@ mols = mols.select([
     'buildingblock2_index',
     'buildingblock3_index'
 ])
-mols.write_parquet(f'out/test/mols.parquet')
+mols.write_parquet(f'out/test/mols-all.parquet')

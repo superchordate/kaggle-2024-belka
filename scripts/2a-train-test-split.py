@@ -32,7 +32,7 @@ train_val_distinct_blocks = train_val_blocks
 train_val_distinct_blocks.write_parquet('out/train/val/train_val_distinct_blocks.parquet')
 
 # start with train_val being mols that included nonshared blocks.
-train_mols = pl.read_parquet('out/train/mols.parquet')
+train_mols = pl.read_parquet('out/train/mols-all.parquet')
 train_val_mols = train_mols.filter(
     pl.col('buildingblock1_index').is_in(train_val_blocks['index']) |
     pl.col('buildingblock2_index').is_in(train_val_blocks['index']) |   
@@ -55,6 +55,6 @@ train_val_mols_blocks = np.unique(np.concatenate([
 print(f'{1 - np.mean(np.isin(train_val_mols_blocks, train_blocks["index"])):.2f} val blocks are unique to val.')
 
 # cool - save the final mols.
-train_mols.write_parquet('out/train/train/mols.parquet')
+train_mols.write_parquet('out/train/train/mols-all.parquet')
 train_val_mols.write_parquet('out/train/val/mols.parquet')
 
