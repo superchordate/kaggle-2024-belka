@@ -5,9 +5,16 @@ I've shared this repo to show some of my work in the data science realm. This co
 My preference in competitions is to build a neural network. These models easily train on very large and complex data and do a lot of the feature engineering and selection work for you. They don't always make sense in non-competition projects where explainability is important in addition to performance. 
 
 Some interesting things to look at: 
+
 * [jobs/2-train-model/](https://github.com/superchordate/kaggle-2024-belka/tree/main/jobs/2-train-model): I often use Batch Jobs on Google Cloud Projects to run projects that need GPU and high memory.
+
 * [modules/](https://github.com/superchordate/kaggle-2024-belka/tree/main/modules) and [fun/](https://github.com/superchordate/kaggle-2024-belka/tree/main/fun): neat functions that I've written.
+
 * [scripts/](https://github.com/superchordate/kaggle-2024-belka/tree/main/scripts): end-to-end, stepwise scripts from batched data intake (the data was very large), preprocessing, feature engineering, model training, and inference. 
+
+My score in the [competition](https://www.kaggle.com/competitions/leash-BELKA) was 0.22, 75% of the way to the highest score of 0.31. My placement of 1,006th out of 1,946 may seem low (I would love for it to be higher!) but the dynamics of the competition are complex, making interpretation of the results difficult. 
+
+People often share high-scoring submissions which get copied by submitters and throw off the rankings. Also, the final test dataset did not match the data used to show preliminary scores, indicating issues with the competition design. In the preliminary (public) scores, the top score was 0.53 (vs 0.31 in the final/private scores) and my top score was 0.43 or 473rd out of 1,946 (top 25%).
 
 ## About Me
 
