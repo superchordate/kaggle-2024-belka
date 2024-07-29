@@ -1,3 +1,20 @@
+# Welcome!
+
+I've shared this repo to show some of my work in the data science realm. This code was only used on a solo project so it isn't super clean or well documented. That said, it'll give you an idea of what my code is like and what work I've done.
+
+My preference in competitions is to build a neural network. These models easily train on very large and complex data and do a lot of the feature engineering and selection work for you. They don't always make sense in non-competition projects where explainability is important in addition to performance. 
+
+Some interesting things to look at: 
+* [jobs/2-train-model/](https://github.com/superchordate/kaggle-2024-belka/tree/main/jobs/2-train-model): I often use Batch Jobs on Google Cloud Projects to run projects that need GPU and high memory.
+* [modules/](https://github.com/superchordate/kaggle-2024-belka/tree/main/modules) and [fun/](https://github.com/superchordate/kaggle-2024-belka/tree/main/fun): neat functions that I've written.
+* [scripts/](https://github.com/superchordate/kaggle-2024-belka/tree/main/scripts): end-to-end, stepwise scripts from batched data intake (the data was very large), preprocessing, feature engineering, model training, and inference. 
+
+## About Me
+
+I'm an independent contractor helping companies build custom cloud apps and leverage data science, visual analytics, and AI. I offer low introductory rates, free consultation and estimates, and no minimums, so contact me today and let's chat about how I can help!
+
+https://www.bryce-chamberlain.com/
+
 ## Installation
 
 * Instally Python `3.8.4`
